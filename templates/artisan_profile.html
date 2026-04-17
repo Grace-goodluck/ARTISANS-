@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artisan Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+<div class="profile-container">
+
+    <div class="profile-header">
+        {% if artisan.image %}
+            <img src="{{ url_for('static', filename='uploads/' + artisan.image) }}" class="profile-img">
+        {% endif %}
+        
+        <h2>{{ artisan.name }}</h2>
+        <p>
+
+            {% set full_stars = average_rating|int %}
+
+            {% set half_star = 0 %}
+            {% if average_rating - full_stars >= 0.5 %}
+                {% set half_star = 1 %}
+            {% endif %}
+
+            {% set empty_stars = 5 - full_stars - half_star %}
+
+        <span class="stars">
+            {% if review_count > 0 %}
+            {% for i in range(full_stars) %}
+                <i class="fa-solid fa-star" style="color: gold;"></i>
+            {% endfor %}
+            
+            {% if half_star %}
+                <i class="fa-solid fa-star-half-stroke" style="color: gold;"></i>
+            {% endif %}
+            
+            {% for i in range(empty_stars) %}
+                <i class="fa-regular fa-star" style="color: gold;"></i>
+            {% endfor %}
+        </span>
+        
+        <span class="rating-text">
+            ({{ average_rating | round(1) }}) - {{ review_count }} reviews
+        </span>
+
+    {% else %}
+         
+        <p style="color: gray;">No ratings yet</p>
+
+    {% endif %}    
+
+        </p>
+
+        <p class="skill">{{ artisan.skill }}</p>
+        <p class="location">{{ artisan.location }}</p>
+    </div>
+
+    <div class="profile-details">
+        <p><strong>Experience:</strong> {{ artisan.experience }} years</p>
+        <p><strong>Phone:</strong> {{ artisan.phone }}</p>
+        <p><strong>About:</strong> {{ artisan.description }}</p>
+    </div>
+     
+    <hr>
+
+    <h3>Reviews</h3>
+
+    {% if reviews %}
+        {% for review in reviews %}
+            <div class="review-card">
+                <div class="review-rating">
+                    {{ '⭐' * review['rating'] }}
+                </div>
+                <div class="review-comment">
+                    {{ review['comment'] }}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No reviews yet.</p>
+    {% endif %} 
+    
+    <hr>
+
+    <h3>Leave a Review</h3>
+
+    <form method="POST">
+
+        <label>Rating:</label><br>
+        <select name="rating" required>
+            <option value="">Select rating</option>
+            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+            <option value="4">⭐⭐⭐⭐ (4)</option>
+            <option value="3">⭐⭐⭐ (3)</option>
+            <option value="2">⭐⭐ (2)</option>
+            <option value="1">⭐ (1)</option>
+        </select>
+
+        <br><br>
+
+        <label>Comment:</label><br>
+        <textarea name="comment" rows="3" placeholder="Write your review..." required></textarea>
+
+        <br><br>
+
+        <button type="submit">Submit Review</button>
+    </form>
+
+    <div class="profile-actions">
+        <a href="tel:{{ artisan.phone }}" class="call-btn">Call</a>
+        {% set wa_number = artisan.whatsapp if artisan.whatsapp else artisan.phone %}
+        <a href="https://wa.me/{{ wa_number }}" class="whatsapp-btn">Whatsapp</a>
+    </div>
+    
+</div>
+
+</body>
+</html>

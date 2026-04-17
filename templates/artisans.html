@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find an Artisan</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<nav> 
+    <a href="/">Home</a>
+    <a href="/artisans">Find Artisan</a>
+    <a href="/register">Register</a>
+    <a href="/login">Login</a>
+</nav>
+
+<h1>Available Artisans</h1>
+
+<form method="GET" class="search-box">
+    <input type="text" name="search" placeholder="Search for artisans..." value="{{ request.args.get('search', '') }}">
+    <button type="submit">Search</button>
+</form>
+
+<div class="users-container">
+    {% if artisans %}
+        {% for artisan in artisans %}
+        <a href="/artisan/{{ artisan.id }}" class="card-link">
+            <div class="user-card">
+            
+            <div class="image-box">
+                {% if artisan.image %}
+                    <img src="{{ url_for('static', filename='uploads/' + artisan.image) }}">
+                {% endif %}
+            </div>    
+
+            <h3>{{ artisan.name }}</h3>
+            <p>{{ artisan.skill }}</p>
+            <p class="location">{{ artisan.location }}</p>
+
+            <button class="hire-btn">Hire</button>
+            </div>
+        </a>    
+        {% endfor %}
+    {% else %}
+        <p class="no-result">No artisans found</p>
+    {% endif %}    
+</div>
+
+</body>
+</html>
+    

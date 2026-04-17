@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<nav>
+    <a href="/">Home</a>
+    <a href="/artisans">Find Artisan</a>
+    <a href="/register">Register</a>
+    <a href="/login">Login</a>
+</nav>
+
+<div class="form-container">
+
+    <form method="POST">
+
+        <h1 class="login-title">Login</h1>
+
+        {% if error %}
+             <p style="color: red;">{{ error }}</p>
+        {% endif %}
+    
+        <p>Access your account</p>
+
+        <div style="width: 100%; margin-bottom: 15px;">
+            <input type="email" name="email" placeholder="Enter email" required
+            style="width: 100%; padding: 12px; border-radius: 6px;
+            border: 1px solid #ccc; box-sizing: border-box;">
+        </div>
+
+        <div style="position: relative; width: 100%; margin-bottom: 15px;">
+            <input type="password" name="password" id="password" placeholder="Enter password" required
+            style="width: 100%; padding: 12px; padding-right: 40px; border-radius: 6px; border: 1px 
+            solid #ccc; box-sizing: border-box;">
+            
+            <span id="eyeIcon" onclick="togglePassword()"
+                style="position: absolute; right: 10px; top: 50%;
+                 transform: translateY(-50%); cursor: pointer;">
+                👁
+            </span>
+        </div>
+
+        <button type="submit">Login</button>
+
+        <p><a href="/forgot-password">Forgot password?</a></p>
+    
+    </form>
+
+</div>
+
+<script>
+function togglePassword() {
+    var password = document.getElementById("password");
+    var icon = document.getElementById("eyeIcon");
+
+    if (password.type === "password") {
+        password.type = "text";
+        icon.textContent = "🙈";
+    } else {
+        password.type = "password";
+        icon.textContent = "👁"
+    }
+}
+</script>
+    
+</body>
+</html>
