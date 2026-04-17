@@ -3,3 +3,4 @@ database.db
 __pycache__/
 static/uploads/
 .env
+venv/
