@@ -38,12 +38,16 @@ def create_table():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             email TEXT,
+            dob TEXT,
+            gender TEXT,
             skill TEXT,
             location TEXT,
             experience INTEGER,
             phone TEXT,
             whatsapp TEXT,
             description TEXT,
+            custom_orders TEXT,
+            marketing TEXT,
             image TEXT
         )
     ''')
@@ -128,10 +132,14 @@ def add_artisan():
 
         location = city + ", " + state
 
+        dob = request.form.get("dob", "")
+        gender = request.form.get("gender", "")
         experience = request.form["experience"]
         phone = request.form.get("phone", "")
         whatsapp = request.form.get("whatsapp", "")
         description = request.form["description"]
+        custom_orders = request.form.get("custom_orders", "")
+        marketing = ", ".join(request.form.getlist("marketing[]"))
 
         conn = get_db_connection()
 
@@ -145,8 +153,8 @@ def add_artisan():
             return render_template("add_artisan.html", error="An artisan with that name, skill, and phone number already exists.")
 
         conn.execute(
-            "INSERT INTO artisans (name, email, skill, location, experience, phone, whatsapp, description, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, email, skill, location, experience, phone, whatsapp, description, filename)
+            "INSERT INTO artisans (name, email, dob, gender, skill, location, experience, phone, whatsapp, description, custom_orders, marketing, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, email, dob, gender, skill, location, experience, phone, whatsapp, description, custom_orders, marketing, filename)
         )
         conn.commit()
         conn.close()

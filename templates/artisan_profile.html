@@ -60,9 +60,15 @@
     </div>
 
     <div class="profile-details">
+        {% if artisan.gender %}<p><strong>Gender:</strong> {{ artisan.gender }}</p>{% endif %}
+        {% if artisan.dob %}<p><strong>Date of Birth:</strong> {{ artisan.dob }}</p>{% endif %}
         <p><strong>Experience:</strong> {{ artisan.experience }} years</p>
         <p><strong>Phone:</strong> {{ artisan.phone }}</p>
+        {% if artisan.whatsapp %}<p><strong>WhatsApp:</strong> {{ artisan.whatsapp }}</p>{% endif %}
+        {% if artisan.email %}<p><strong>Email:</strong> {{ artisan.email }}</p>{% endif %}
         <p><strong>About:</strong> {{ artisan.description }}</p>
+        {% if artisan.custom_orders %}<p><strong>Accepts Custom Orders:</strong> {{ artisan.custom_orders }}</p>{% endif %}
+        {% if artisan.marketing %}<p><strong>Markets Via:</strong> {{ artisan.marketing }}</p>{% endif %}
     </div>
      
     <hr>
