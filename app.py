@@ -63,6 +63,15 @@ def create_table():
     )
     ''')
 
+    conn.execute('''
+    CREATE TABLE IF NOT EXISTS portfolios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        artisan_id INTEGER,
+        image TEXT,
+        FOREIGN KEY (artisan_id) REFERENCES artisans(id)
+    )
+    ''')
+
     conn.commit()
     conn.close()  
 
@@ -156,6 +165,18 @@ def add_artisan():
             "INSERT INTO artisans (name, email, dob, gender, skill, location, experience, phone, whatsapp, description, custom_orders, marketing, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (name, email, dob, gender, skill, location, experience, phone, whatsapp, description, custom_orders, marketing, filename)
         )
+        artisan_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        portfolio_files = request.files.getlist("portfolio")
+        for photo in portfolio_files[:5]:
+            if photo and allowed_file(photo.filename):
+                photo_filename = secure_filename(photo.filename)
+                photo.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+                conn.execute(
+                    "INSERT INTO portfolios (artisan_id, image) VALUES (?, ?)",
+                    (artisan_id, photo_filename)
+                )
+
         conn.commit()
         conn.close()
 
@@ -286,6 +307,11 @@ def artisan_profile(id):
     reviews = conn.execute(
         "SELECT * FROM reviews WHERE artisan_id = ? ORDER BY created_at DESC", (id,)
     ).fetchall()
+
+    portfolio = conn.execute(
+        "SELECT image FROM portfolios WHERE artisan_id = ?", (id,)
+    ).fetchall()
+
     conn.close()
 
     review_count = len(reviews)
@@ -296,7 +322,8 @@ def artisan_profile(id):
         artisan=artisan,
         reviews=reviews,
         average_rating=average_rating,
-        review_count=review_count
+        review_count=review_count,
+        portfolio=portfolio
     )
 
 @app.route('/forgot-password', methods=['GET', 'POST'])

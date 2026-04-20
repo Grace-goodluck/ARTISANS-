@@ -73,6 +73,16 @@
      
     <hr>
 
+    {% if portfolio %}
+    <h3>Product / Service Photos</h3>
+    <div class="portfolio-grid">
+        {% for photo in portfolio %}
+            <img src="{{ url_for('static', filename='uploads/' + photo.image) }}" class="portfolio-img" alt="Portfolio photo">
+        {% endfor %}
+    </div>
+    <hr>
+    {% endif %}
+
     <h3>Reviews</h3>
 
     {% if reviews %}
