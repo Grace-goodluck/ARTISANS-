@@ -4,3 +4,5 @@ __pycache__/
 static/uploads/
 .env
 venv/
+
+.vercel

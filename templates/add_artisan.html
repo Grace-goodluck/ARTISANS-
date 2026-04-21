@@ -3,123 +3,828 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register as Artisan</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Register as Artisan — Artisaan's Crib</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #022f05 !important;
+            background-image: none !important;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #fff8dc;
+            min-height: 100vh;
+        }
+
+        /* NAV */
+        .top-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 16px 40px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(196,155,58,0.3);
+        }
+
+        .top-nav a {
+            color: #fff8dc;
+            text-decoration: none;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0.8;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        .top-nav a:hover { opacity: 1; color: #c49b3a; }
+        .top-nav a:first-child { margin-right: auto; font-weight: bold; font-size: 17px; opacity: 1; }
+
+        /* PAGE HEADER */
+        .page-header {
+            text-align: center;
+            padding: 40px 20px 20px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff8dc;
+            margin-bottom: 6px;
+        }
+
+        .page-header p {
+            color: rgba(255,248,220,0.6);
+            font-size: 15px;
+            padding: 0;
+        }
+
+        /* PROGRESS BAR */
+        .progress-wrapper {
+            max-width: 700px;
+            margin: 24px auto 0;
+            padding: 0 20px;
+        }
+
+        .step-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .step-label {
+            font-size: 11px;
+            color: rgba(255,248,220,0.4);
+            text-align: center;
+            flex: 1;
+            transition: color 0.3s;
+        }
+
+        .step-label.active { color: #c49b3a; font-weight: 700; }
+        .step-label.done { color: rgba(255,248,220,0.7); }
+
+        .progress-bar-track {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #c49b3a, #e8c96b);
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        .step-dots {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .step-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255,248,220,0.4);
+            transition: all 0.3s;
+        }
+
+        .step-dot.active {
+            background: #c49b3a;
+            border-color: #c49b3a;
+            color: #022f05;
+            box-shadow: 0 0 12px rgba(196,155,58,0.5);
+        }
+
+        .step-dot.done {
+            background: rgba(196,155,58,0.3);
+            border-color: #c49b3a;
+            color: #c49b3a;
+        }
+
+        /* FORM WRAPPER */
+        .form-wrapper {
+            max-width: 700px;
+            margin: 30px auto 60px;
+            padding: 0 20px;
+        }
+
+        /* STEP CARD */
+        .step-card {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(196,155,58,0.2);
+            border-radius: 20px;
+            padding: 36px;
+            backdrop-filter: blur(6px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .step-card.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(196,155,58,0.2);
+        }
+
+        .step-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(196,155,58,0.15);
+            border: 1px solid rgba(196,155,58,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #c49b3a;
+            flex-shrink: 0;
+        }
+
+        .step-heading-text h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff8dc;
+        }
+
+        .step-heading-text p {
+            font-size: 13px;
+            color: rgba(255,248,220,0.5);
+            padding: 0;
+            margin-top: 2px;
+        }
+
+        /* FORM FIELDS */
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .field-grid .full { grid-column: 1 / -1; }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #c49b3a;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .field label .req { color: #ff6b6b; margin-left: 2px; }
+
+        .field input,
+        .field select,
+        .field textarea {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(196,155,58,0.25);
+            border-radius: 10px;
+            padding: 11px 14px;
+            color: #fff8dc;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+            width: 100%;
+        }
+
+        .field input::placeholder,
+        .field textarea::placeholder { color: rgba(255,248,220,0.3); }
+
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
+            border-color: #c49b3a;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .field select option { background: #022f05; color: #fff8dc; }
+
+        .field input[type="file"] {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .field input[type="file"]::-webkit-file-upload-button {
+            background: rgba(196,155,58,0.2);
+            border: 1px solid rgba(196,155,58,0.4);
+            color: #c49b3a;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* CHECKBOX GROUP */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(196,155,58,0.2);
+            border-radius: 8px;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .checkbox-item:hover { border-color: #c49b3a; background: rgba(196,155,58,0.1); }
+
+        .checkbox-item input[type="checkbox"],
+        .checkbox-item input[type="radio"] {
+            width: auto;
+            border: none;
+            background: none;
+            padding: 0;
+            accent-color: #c49b3a;
+        }
+
+        /* FILE PREVIEW */
+        .file-hint {
+            font-size: 12px;
+            color: rgba(255,248,220,0.4);
+            margin-top: 4px;
+        }
+
+        /* REVIEW SUMMARY */
+        .review-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .review-item {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(196,155,58,0.15);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .review-item .rlabel {
+            font-size: 11px;
+            color: rgba(255,248,220,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .review-item .rvalue {
+            font-size: 14px;
+            color: #fff8dc;
+            margin-top: 2px;
+            word-break: break-word;
+        }
+
+        .terms-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(196,155,58,0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .terms-box input { width: auto; background: none; border: none; padding: 0; margin-top: 2px; accent-color: #c49b3a; }
+
+        .terms-box label {
+            font-size: 14px;
+            color: rgba(255,248,220,0.75);
+            cursor: pointer;
+        }
+
+        .terms-box a { color: #c49b3a; }
+
+        /* ERROR */
+        .error-msg {
+            background: rgba(255,80,80,0.15);
+            border: 1px solid rgba(255,80,80,0.4);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #ff9999;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        /* NAV BUTTONS */
+        .btn-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(196,155,58,0.15);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+
+        .btn-prev {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,248,220,0.7);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .btn-next {
+            background: #c49b3a;
+            color: #022f05;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #c49b3a, #e8c96b);
+            color: #022f05;
+        }
+
+        .step-counter {
+            font-size: 13px;
+            color: rgba(255,248,220,0.4);
+        }
+
+        @media (max-width: 600px) {
+            .field-grid { grid-template-columns: 1fr; }
+            .review-grid { grid-template-columns: 1fr; }
+            .step-card { padding: 24px 18px; }
+            .top-nav { padding: 14px 20px; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="form-container">    
+<!-- NAV -->
+<nav class="top-nav">
+    <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+    <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+</nav>
 
-    <h2>Register as an Artisan</h2>
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <h1><i class="fa-solid fa-hammer" style="color:#c49b3a;"></i> Artisan Registration</h1>
+    <p>Join our community of skilled professionals</p>
+</div>
 
-    <form method="POST" enctype="multipart/form-data">
+<!-- PROGRESS -->
+<div class="progress-wrapper">
+    <div class="step-labels">
+        <span class="step-label active" id="lbl-1">Personal</span>
+        <span class="step-label" id="lbl-2">Skills</span>
+        <span class="step-label" id="lbl-3">Location</span>
+        <span class="step-label" id="lbl-4">Online</span>
+        <span class="step-label" id="lbl-5">Media</span>
+        <span class="step-label" id="lbl-6">Review</span>
+    </div>
+    <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill" style="width:16.6%"></div>
+    </div>
+    <div class="step-dots">
+        <div class="step-dot active" id="dot-1">1</div>
+        <div class="step-dot" id="dot-2">2</div>
+        <div class="step-dot" id="dot-3">3</div>
+        <div class="step-dot" id="dot-4">4</div>
+        <div class="step-dot" id="dot-5">5</div>
+        <div class="step-dot" id="dot-6">6</div>
+    </div>
+</div>
 
-        <h3> 1. Personal Information</h3>
+<!-- FORM -->
+<div class="form-wrapper">
+    {% if error %}
+    <div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+    {% endif %}
 
-        <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" name="name" placeholder="Enter your full name">
+    <form method="POST" enctype="multipart/form-data" id="artisan-form">
+
+        <!-- STEP 1: PERSONAL INFO -->
+        <div class="step-card active" id="step-1">
+            <div class="step-heading">
+                <div class="step-icon"><i class="fa-solid fa-user"></i></div>
+                <div class="step-heading-text">
+                    <h2>Personal Information</h2>
+                    <p>Tell us about yourself</p>
+                </div>
+            </div>
+            <div class="field-grid">
+                <div class="field full">
+                    <label>Full Name <span class="req">*</span></label>
+                    <input type="text" name="name" placeholder="e.g. Grace Nwakama" required>
+                </div>
+                <div class="field">
+                    <label>Email Address <span class="req">*</span></label>
+                    <input type="email" name="email" placeholder="your@email.com" required>
+                </div>
+                <div class="field">
+                    <label>Date of Birth</label>
+                    <input type="date" name="dob">
+                </div>
+                <div class="field">
+                    <label>Gender</label>
+                    <select name="gender">
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label>Languages Spoken</label>
+                    <input type="text" name="languages" placeholder="e.g. English, Yoruba, Igbo, Hausa">
+                </div>
+            </div>
+            <div class="btn-row">
+                <span class="step-counter">Step 1 of 6</span>
+                <button type="button" class="btn btn-next" onclick="goNext(1)">Next <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" name="email" placeholder="Enter your email">
+        <!-- STEP 2: SKILLS & WORK -->
+        <div class="step-card" id="step-2">
+            <div class="step-heading">
+                <div class="step-icon"><i class="fa-solid fa-briefcase"></i></div>
+                <div class="step-heading-text">
+                    <h2>Skills & Work Details</h2>
+                    <p>Tell us about your craft</p>
+                </div>
+            </div>
+            <div class="field-grid">
+                <div class="field">
+                    <label>Skill / Trade <span class="req">*</span></label>
+                    <input type="text" name="skill" placeholder="e.g. Carpenter, Tailor" required>
+                </div>
+                <div class="field">
+                    <label>Years of Experience <span class="req">*</span></label>
+                    <input type="number" name="experience" placeholder="e.g. 5" min="0" max="60" required>
+                </div>
+                <div class="field full">
+                    <label>Certifications / Qualifications</label>
+                    <input type="text" name="certifications" placeholder="e.g. City & Guilds, NABTEB, Trade Test Level 2">
+                </div>
+                <div class="field">
+                    <label>Availability</label>
+                    <select name="availability">
+                        <option value="">Select availability</option>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Weekends only">Weekends only</option>
+                        <option value="By appointment">By appointment</option>
+                        <option value="Flexible">Flexible</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Price Range (per job/hr)</label>
+                    <input type="text" name="price_range" placeholder="e.g. ₦5,000 – ₦20,000">
+                </div>
+                <div class="field full">
+                    <label>Do you accept custom orders?</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="radio" name="custom_orders" value="Yes"> Yes
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="radio" name="custom_orders" value="No"> No
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="radio" name="custom_orders" value="Negotiable"> Negotiable
+                        </label>
+                    </div>
+                </div>
+                <div class="field full">
+                    <label>How do you market your work?</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="marketing[]" value="Online"> Online
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="marketing[]" value="Local Shop"> Local Shop
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="marketing[]" value="Referrals"> Referrals
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="marketing[]" value="Trade Fairs"> Trade Fairs
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="marketing[]" value="Export"> Export
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="marketing[]" value="Social Media"> Social Media
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn btn-prev" onclick="goPrev(2)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <span class="step-counter">Step 2 of 6</span>
+                <button type="button" class="btn btn-next" onclick="goNext(2)">Next <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Date of Birth</label>
-            <input type="date" name="dob">
+        <!-- STEP 3: LOCATION & CONTACT -->
+        <div class="step-card" id="step-3">
+            <div class="step-heading">
+                <div class="step-icon"><i class="fa-solid fa-location-dot"></i></div>
+                <div class="step-heading-text">
+                    <h2>Location & Contact</h2>
+                    <p>Where can clients find and reach you?</p>
+                </div>
+            </div>
+            <div class="field-grid">
+                <div class="field">
+                    <label>City <span class="req">*</span></label>
+                    <input type="text" name="city" placeholder="e.g. Lekki" required>
+                </div>
+                <div class="field">
+                    <label>State <span class="req">*</span></label>
+                    <select name="state" required>
+                        <option value="">Select state</option>
+                        <option>Abia</option><option>Adamawa</option><option>Akwa Ibom</option>
+                        <option>Anambra</option><option>Bauchi</option><option>Bayelsa</option>
+                        <option>Benue</option><option>Borno</option><option>Cross River</option>
+                        <option>Delta</option><option>Ebonyi</option><option>Edo</option>
+                        <option>Ekiti</option><option>Enugu</option><option>FCT Abuja</option>
+                        <option>Gombe</option><option>Imo</option><option>Jigawa</option>
+                        <option>Kaduna</option><option>Kano</option><option>Katsina</option>
+                        <option>Kebbi</option><option>Kogi</option><option>Kwara</option>
+                        <option>Lagos</option><option>Nasarawa</option><option>Niger</option>
+                        <option>Ogun</option><option>Ondo</option><option>Osun</option>
+                        <option>Oyo</option><option>Plateau</option><option>Rivers</option>
+                        <option>Sokoto</option><option>Taraba</option><option>Yobe</option>
+                        <option>Zamfara</option>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label>Service Area (how far can you travel?)</label>
+                    <input type="text" name="service_area" placeholder="e.g. Within Lagos Island, Up to 20km radius, Nationwide">
+                </div>
+                <div class="field">
+                    <label>Phone Number <span class="req">*</span></label>
+                    <input type="tel" name="phone" placeholder="e.g. 08012345678" required>
+                </div>
+                <div class="field">
+                    <label>WhatsApp Number</label>
+                    <input type="tel" name="whatsapp" placeholder="e.g. 08012345678">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn btn-prev" onclick="goPrev(3)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <span class="step-counter">Step 3 of 6</span>
+                <button type="button" class="btn btn-next" onclick="goNext(3)">Next <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Gender</label>
-            <select name="gender">
-                <option value="">Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-            </select>
+        <!-- STEP 4: ONLINE PRESENCE -->
+        <div class="step-card" id="step-4">
+            <div class="step-heading">
+                <div class="step-icon"><i class="fa-solid fa-globe"></i></div>
+                <div class="step-heading-text">
+                    <h2>Online Presence</h2>
+                    <p>Help clients find you online</p>
+                </div>
+            </div>
+            <div class="field-grid">
+                <div class="field">
+                    <label>Instagram Handle</label>
+                    <input type="text" name="instagram" placeholder="e.g. @gracetailors">
+                </div>
+                <div class="field">
+                    <label>Facebook Profile / Page</label>
+                    <input type="text" name="facebook" placeholder="e.g. facebook.com/gracetailors">
+                </div>
+                <div class="field full">
+                    <label>About You / Description <span class="req">*</span></label>
+                    <textarea name="description" rows="5" placeholder="Describe your work, experience, and what makes you stand out..." required></textarea>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn btn-prev" onclick="goPrev(4)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <span class="step-counter">Step 4 of 6</span>
+                <button type="button" class="btn btn-next" onclick="goNext(4)">Next <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Profile Picture</label>
-            <input type="file" name="profile_pic">
+        <!-- STEP 5: PHOTOS & MEDIA -->
+        <div class="step-card" id="step-5">
+            <div class="step-heading">
+                <div class="step-icon"><i class="fa-solid fa-images"></i></div>
+                <div class="step-heading-text">
+                    <h2>Photos & Media</h2>
+                    <p>Show off your work</p>
+                </div>
+            </div>
+            <div class="field-grid">
+                <div class="field full">
+                    <label>Profile Picture <span class="req">*</span></label>
+                    <input type="file" name="profile_pic" accept="image/*" required>
+                    <span class="file-hint">Accepted: JPG, PNG, JPEG, GIF, WEBP</span>
+                </div>
+                <div class="field full">
+                    <label>Product / Service Photos <span style="color:rgba(255,248,220,0.4); font-weight:400; text-transform:none; letter-spacing:0;">(up to 5)</span></label>
+                    <input type="file" name="portfolio" accept="image/*" multiple>
+                    <span class="file-hint">Upload photos of your work to attract clients</span>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn btn-prev" onclick="goPrev(5)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <span class="step-counter">Step 5 of 6</span>
+                <button type="button" class="btn btn-next" onclick="goNext(5)">Next <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Skill</label>
-            <input type="text" name="skill" placeholder="e.g. Tailor, Carpenter">
+        <!-- STEP 6: REVIEW & SUBMIT -->
+        <div class="step-card" id="step-6">
+            <div class="step-heading">
+                <div class="step-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                <div class="step-heading-text">
+                    <h2>Review & Submit</h2>
+                    <p>Confirm your details before submitting</p>
+                </div>
+            </div>
+
+            <div class="review-grid" id="review-summary"></div>
+
+            <div class="terms-box">
+                <input type="checkbox" name="terms" id="terms" required>
+                <label for="terms">
+                    I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>.
+                    I confirm that all information provided is accurate.
+                </label>
+            </div>
+
+            <div class="btn-row">
+                <button type="button" class="btn btn-prev" onclick="goPrev(6)"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <span class="step-counter">Step 6 of 6</span>
+                <button type="submit" class="btn btn-submit">
+                    <i class="fa-solid fa-paper-plane"></i> Submit Registration
+                </button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>City</label>
-            <input type="text" name="city" placeholder="Enter your city">
-        </div>
-
-        <div class="form-group">
-            <label>State</label>
-            <select name="state">
-                <option value="">Select your state</option>
-                <option value="Lagos">Lagos</option>
-                <option value="Abuja">Abuja</option>
-                <option value="Rivers">Rivers</option>
-                <option value="Delta">Delta</option>
-                <option value="Oyo">Oyo</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Years of Experience</label>
-            <input type="number" name="experience" placeholder="e.g. 3">
-        </div>
-
-        <div class="form-group">
-            <label>Phone Number</label>
-            <input type="text" name="phone" placeholder="Enter phone number">
-        </div>
-
-        <div class="form-group">
-            <label>Whatsapp Number (Optional)</label>
-            <input type="text" name="whatsapp" placeholder="Enter whatsapp number">
-        </div>
-
-        <div class="form-group">
-            <label>Description</label>
-            <textarea name="description" placeholder="Tell us about your work"></textarea>
-        </div>
-
-        <div class="form-group">
-            <label>Upload Product Photos (Max 5)</label>
-            <input type="file" name="portfolio" multiple>
-        </div>
-
-        <div class="form-group">
-            <label>Do you accept custom orders?</label>
-
-            <input type="radio" name="custom_orders" value="Yes"> Yes
-            <input type="radio" name="custom_orders" value="No"> No
-        </div>
-
-        <div class="form-group">
-            <label>How do you market your products?</label><br>
-
-            <input type="checkbox" name="marketing[]" value="Online">Online
-            <input type="checkbox" name="marketing[]" value="Local Shop">Local Shop
-            <input type="checkbox" name="marketing[]" value="Fairs">Fairs
-            <input type="checkbox" name="marketing[]" value="Export">Export
-        </div>
-
-        <div class="form-group">
-            <input type="checkbox" name="terms" required>
-            <label>
-                I agree to the <a href="a">Terms & Conditions</a> and <a href="#">Privacy Policy</a>
-            </label>
-        </div>
-    
-        <button type="submit">Submit Registration</button>
     </form>
+</div>
 
-</div>    
-    
+<script>
+    const TOTAL_STEPS = 6;
+    let currentStep = 1;
+
+    function updateProgress(step) {
+        const fill = (step / TOTAL_STEPS) * 100;
+        document.getElementById('progress-fill').style.width = fill + '%';
+
+        for (let i = 1; i <= TOTAL_STEPS; i++) {
+            const dot = document.getElementById('dot-' + i);
+            const lbl = document.getElementById('lbl-' + i);
+            dot.classList.remove('active', 'done');
+            lbl.classList.remove('active', 'done');
+            if (i < step) { dot.classList.add('done'); lbl.classList.add('done'); dot.innerHTML = '<i class="fa-solid fa-check" style="font-size:11px;"></i>'; }
+            else if (i === step) { dot.classList.add('active'); lbl.classList.add('active'); dot.textContent = i; }
+            else { dot.textContent = i; }
+        }
+    }
+
+    function showStep(step) {
+        document.querySelectorAll('.step-card').forEach(c => c.classList.remove('active'));
+        document.getElementById('step-' + step).classList.add('active');
+        updateProgress(step);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function validateStep(step) {
+        const card = document.getElementById('step-' + step);
+        const required = card.querySelectorAll('[required]');
+        for (let field of required) {
+            if (!field.value.trim()) {
+                field.focus();
+                field.style.borderColor = '#ff6b6b';
+                setTimeout(() => field.style.borderColor = '', 2000);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function goNext(step) {
+        if (!validateStep(step)) return;
+        currentStep = step + 1;
+        if (currentStep === 6) buildReview();
+        showStep(currentStep);
+    }
+
+    function goPrev(step) {
+        currentStep = step - 1;
+        showStep(currentStep);
+    }
+
+    function getVal(name) {
+        const el = document.querySelector('[name="' + name + '"]');
+        if (!el) return '—';
+        if (el.type === 'file') return el.files.length ? el.files.length + ' file(s) selected' : '—';
+        return el.value || '—';
+    }
+
+    function getChecked(name) {
+        const checked = [...document.querySelectorAll('[name="' + name + '"]:checked')].map(e => e.value);
+        return checked.length ? checked.join(', ') : '—';
+    }
+
+    function buildReview() {
+        const fields = [
+            ['Full Name', getVal('name')],
+            ['Email', getVal('email')],
+            ['Date of Birth', getVal('dob')],
+            ['Gender', getVal('gender')],
+            ['Languages', getVal('languages')],
+            ['Skill / Trade', getVal('skill')],
+            ['Experience', getVal('experience') + (getVal('experience') !== '—' ? ' years' : '')],
+            ['Certifications', getVal('certifications')],
+            ['Availability', getVal('availability')],
+            ['Price Range', getVal('price_range')],
+            ['City', getVal('city')],
+            ['State', getVal('state')],
+            ['Service Area', getVal('service_area')],
+            ['Phone', getVal('phone')],
+            ['WhatsApp', getVal('whatsapp')],
+            ['Instagram', getVal('instagram')],
+            ['Facebook', getVal('facebook')],
+            ['Custom Orders', getChecked('custom_orders')],
+            ['Marketing', getChecked('marketing[]')],
+            ['Profile Picture', getVal('profile_pic')],
+            ['Portfolio Photos', getVal('portfolio')],
+        ];
+
+        const summary = document.getElementById('review-summary');
+        summary.innerHTML = fields.map(([label, value]) => `
+            <div class="review-item">
+                <div class="rlabel">${label}</div>
+                <div class="rvalue">${value}</div>
+            </div>
+        `).join('');
+    }
+</script>
+
 </body>
 </html>

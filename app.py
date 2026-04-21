@@ -40,11 +40,18 @@ def create_table():
             email TEXT,
             dob TEXT,
             gender TEXT,
+            languages TEXT,
             skill TEXT,
-            location TEXT,
             experience INTEGER,
+            certifications TEXT,
+            availability TEXT,
+            price_range TEXT,
+            location TEXT,
+            service_area TEXT,
             phone TEXT,
             whatsapp TEXT,
+            instagram TEXT,
+            facebook TEXT,
             description TEXT,
             custom_orders TEXT,
             marketing TEXT,
@@ -143,10 +150,17 @@ def add_artisan():
 
         dob = request.form.get("dob", "")
         gender = request.form.get("gender", "")
-        experience = request.form["experience"]
+        languages = request.form.get("languages", "")
+        experience = request.form.get("experience", "")
+        certifications = request.form.get("certifications", "")
+        availability = request.form.get("availability", "")
+        price_range = request.form.get("price_range", "")
+        service_area = request.form.get("service_area", "")
         phone = request.form.get("phone", "")
         whatsapp = request.form.get("whatsapp", "")
-        description = request.form["description"]
+        instagram = request.form.get("instagram", "")
+        facebook = request.form.get("facebook", "")
+        description = request.form.get("description", "")
         custom_orders = request.form.get("custom_orders", "")
         marketing = ", ".join(request.form.getlist("marketing[]"))
 
@@ -162,8 +176,8 @@ def add_artisan():
             return render_template("add_artisan.html", error="An artisan with that name, skill, and phone number already exists.")
 
         conn.execute(
-            "INSERT INTO artisans (name, email, dob, gender, skill, location, experience, phone, whatsapp, description, custom_orders, marketing, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, email, dob, gender, skill, location, experience, phone, whatsapp, description, custom_orders, marketing, filename)
+            "INSERT INTO artisans (name, email, dob, gender, languages, skill, experience, certifications, availability, price_range, location, service_area, phone, whatsapp, instagram, facebook, description, custom_orders, marketing, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, email, dob, gender, languages, skill, experience, certifications, availability, price_range, location, service_area, phone, whatsapp, instagram, facebook, description, custom_orders, marketing, filename)
         )
         artisan_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
@@ -318,7 +332,7 @@ def artisan_profile(id):
     average_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
 
     return render_template(
-        'artisan_profile.html',
+        'artisan_profile_new.html',
         artisan=artisan,
         reviews=reviews,
         average_rating=average_rating,
