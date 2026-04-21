@@ -3,135 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artisan Profile</title>
+    <title>{{ artisan.name }} — Artisan Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-<div class="profile-container">
+<nav>
+    <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+    <a href="/add-artisan"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+</nav>
 
-    <div class="profile-header">
-        {% if artisan.image %}
-            <img src="{{ url_for('static', filename='uploads/' + artisan.image) }}" class="profile-img">
-        {% endif %}
-        
-        <h2>{{ artisan.name }}</h2>
-        <p>
+<div class="profile-page">
 
-            {% set full_stars = average_rating|int %}
-
-            {% set half_star = 0 %}
-            {% if average_rating - full_stars >= 0.5 %}
-                {% set half_star = 1 %}
+    <!-- HERO BANNER -->
+    <div class="profile-banner">
+        <div class="banner-overlay">
+            {% if artisan.image %}
+                <img src="{{ url_for('static', filename='uploads/' + artisan.image) }}" class="profile-img">
+            {% else %}
+                <div class="profile-img profile-placeholder"><i class="fa-solid fa-user"></i></div>
             {% endif %}
+            <h1 class="banner-name">{{ artisan.name }}</h1>
+            <span class="banner-skill"><i class="fa-solid fa-hammer"></i> {{ artisan.skill }}</span>
+            <span class="banner-location"><i class="fa-solid fa-location-dot"></i> {{ artisan.location }}</span>
 
-            {% set empty_stars = 5 - full_stars - half_star %}
-
-        <span class="stars">
-            {% if review_count > 0 %}
-            {% for i in range(full_stars) %}
-                <i class="fa-solid fa-star" style="color: gold;"></i>
-            {% endfor %}
-            
-            {% if half_star %}
-                <i class="fa-solid fa-star-half-stroke" style="color: gold;"></i>
-            {% endif %}
-            
-            {% for i in range(empty_stars) %}
-                <i class="fa-regular fa-star" style="color: gold;"></i>
-            {% endfor %}
-        </span>
-        
-        <span class="rating-text">
-            ({{ average_rating | round(1) }}) - {{ review_count }} reviews
-        </span>
-
-    {% else %}
-         
-        <p style="color: gray;">No ratings yet</p>
-
-    {% endif %}    
-
-        </p>
-
-        <p class="skill">{{ artisan.skill }}</p>
-        <p class="location">{{ artisan.location }}</p>
-    </div>
-
-    <div class="profile-details">
-        {% if artisan.gender %}<p><strong>Gender:</strong> {{ artisan.gender }}</p>{% endif %}
-        {% if artisan.dob %}<p><strong>Date of Birth:</strong> {{ artisan.dob }}</p>{% endif %}
-        <p><strong>Experience:</strong> {{ artisan.experience }} years</p>
-        <p><strong>Phone:</strong> {{ artisan.phone }}</p>
-        {% if artisan.whatsapp %}<p><strong>WhatsApp:</strong> {{ artisan.whatsapp }}</p>{% endif %}
-        {% if artisan.email %}<p><strong>Email:</strong> {{ artisan.email }}</p>{% endif %}
-        <p><strong>About:</strong> {{ artisan.description }}</p>
-        {% if artisan.custom_orders %}<p><strong>Accepts Custom Orders:</strong> {{ artisan.custom_orders }}</p>{% endif %}
-        {% if artisan.marketing %}<p><strong>Markets Via:</strong> {{ artisan.marketing }}</p>{% endif %}
-    </div>
-     
-    <hr>
-
-    {% if portfolio %}
-    <h3>Product / Service Photos</h3>
-    <div class="portfolio-grid">
-        {% for photo in portfolio %}
-            <img src="{{ url_for('static', filename='uploads/' + photo.image) }}" class="portfolio-img" alt="Portfolio photo">
-        {% endfor %}
-    </div>
-    <hr>
-    {% endif %}
-
-    <h3>Reviews</h3>
-
-    {% if reviews %}
-        {% for review in reviews %}
-            <div class="review-card">
-                <div class="review-rating">
-                    {{ '⭐' * review['rating'] }}
-                </div>
-                <div class="review-comment">
-                    {{ review['comment'] }}
-                </div>
+            <div class="banner-rating">
+                {% set full_stars = average_rating|int %}
+                {% set half_star = 1 if (average_rating - full_stars >= 0.5) else 0 %}
+                {% set empty_stars = 5 - full_stars - half_star %}
+                {% if review_count > 0 %}
+                    {% for i in range(full_stars) %}<i class="fa-solid fa-star"></i>{% endfor %}
+                    {% if half_star %}<i class="fa-solid fa-star-half-stroke"></i>{% endif %}
+                    {% for i in range(empty_stars) %}<i class="fa-regular fa-star"></i>{% endfor %}
+                    <span class="banner-rating-text">{{ average_rating }} · {{ review_count }} review{{ 's' if review_count != 1 }}</span>
+                {% else %}
+                    <span class="no-rating-text">No ratings yet</span>
+                {% endif %}
             </div>
-        {% endfor %}
-    {% else %}
-        <p>No reviews yet.</p>
-    {% endif %} 
-    
-    <hr>
-
-    <h3>Leave a Review</h3>
-
-    <form method="POST">
-
-        <label>Rating:</label><br>
-        <select name="rating" required>
-            <option value="">Select rating</option>
-            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
-            <option value="4">⭐⭐⭐⭐ (4)</option>
-            <option value="3">⭐⭐⭐ (3)</option>
-            <option value="2">⭐⭐ (2)</option>
-            <option value="1">⭐ (1)</option>
-        </select>
-
-        <br><br>
-
-        <label>Comment:</label><br>
-        <textarea name="comment" rows="3" placeholder="Write your review..." required></textarea>
-
-        <br><br>
-
-        <button type="submit">Submit Review</button>
-    </form>
-
-    <div class="profile-actions">
-        <a href="tel:{{ artisan.phone }}" class="call-btn">Call</a>
-        {% set wa_number = artisan.whatsapp if artisan.whatsapp else artisan.phone %}
-        <a href="https://wa.me/{{ wa_number }}" class="whatsapp-btn">Whatsapp</a>
+        </div>
     </div>
-    
+
+    <!-- CONTACT BUTTONS -->
+    <div class="contact-bar">
+        <a href="tel:{{ artisan.phone }}" class="contact-btn call-btn">
+            <i class="fa-solid fa-phone"></i> Call
+        </a>
+        {% set wa_number = artisan.whatsapp if artisan.whatsapp else artisan.phone %}
+        <a href="https://wa.me/{{ wa_number }}" class="contact-btn whatsapp-btn" target="_blank">
+            <i class="fa-brands fa-whatsapp"></i> WhatsApp
+        </a>
+        {% if artisan.email %}
+        <a href="mailto:{{ artisan.email }}" class="contact-btn email-btn">
+            <i class="fa-solid fa-envelope"></i> Email
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="profile-body">
+
+        <!-- ABOUT CARD -->
+        <div class="info-card">
+            <h3 class="card-title"><i class="fa-solid fa-circle-info"></i> About</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <i class="fa-solid fa-briefcase"></i>
+                    <div>
+                        <span class="info-label">Experience</span>
+                        <span class="info-value">{{ artisan.experience }} years</span>
+                    </div>
+                </div>
+                {% if artisan.gender %}
+                <div class="info-item">
+                    <i class="fa-solid fa-venus-mars"></i>
+                    <div>
+                        <span class="info-label">Gender</span>
+                        <span class="info-value">{{ artisan.gender }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if artisan.dob %}
+                <div class="info-item">
+                    <i class="fa-solid fa-cake-candles"></i>
+                    <div>
+                        <span class="info-label">Date of Birth</span>
+                        <span class="info-value">{{ artisan.dob }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if artisan.custom_orders %}
+                <div class="info-item">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                    <div>
+                        <span class="info-label">Custom Orders</span>
+                        <span class="info-value">{{ artisan.custom_orders }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if artisan.marketing %}
+                <div class="info-item">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <div>
+                        <span class="info-label">Markets Via</span>
+                        <span class="info-value">{{ artisan.marketing }}</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if artisan.description %}
+            <p class="about-text">{{ artisan.description }}</p>
+            {% endif %}
+        </div>
+
+        <!-- PORTFOLIO -->
+        {% if portfolio %}
+        <div class="info-card">
+            <h3 class="card-title"><i class="fa-solid fa-images"></i> Portfolio</h3>
+            <div class="portfolio-grid">
+                {% for photo in portfolio %}
+                    <img src="{{ url_for('static', filename='uploads/' + photo.image) }}" class="portfolio-img" alt="Portfolio photo">
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- REVIEWS -->
+        <div class="info-card">
+            <h3 class="card-title"><i class="fa-solid fa-star"></i> Reviews
+                <span class="review-count-badge">{{ review_count }}</span>
+            </h3>
+
+            {% if reviews %}
+                {% for review in reviews %}
+                <div class="review-card">
+                    <div class="review-stars">
+                        {% for i in range(review['rating']) %}<i class="fa-solid fa-star"></i>{% endfor %}
+                        {% for i in range(5 - review['rating']) %}<i class="fa-regular fa-star"></i>{% endfor %}
+                    </div>
+                    <p class="review-comment">{{ review['comment'] }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-text">No reviews yet. Be the first to leave one!</p>
+            {% endif %}
+        </div>
+
+        <!-- LEAVE A REVIEW -->
+        <div class="info-card review-form-card">
+            <h3 class="card-title"><i class="fa-solid fa-pen-to-square"></i> Leave a Review</h3>
+            <form method="POST" class="review-form">
+                <label>Rating</label>
+                <select name="rating" required>
+                    <option value="">Select a rating</option>
+                    <option value="5">⭐⭐⭐⭐⭐ — Excellent (5)</option>
+                    <option value="4">⭐⭐⭐⭐ — Very Good (4)</option>
+                    <option value="3">⭐⭐⭐ — Good (3)</option>
+                    <option value="2">⭐⭐ — Fair (2)</option>
+                    <option value="1">⭐ — Poor (1)</option>
+                </select>
+                <label>Comment</label>
+                <textarea name="comment" rows="4" placeholder="Share your experience..." required></textarea>
+                <button type="submit" class="submit-review-btn">
+                    <i class="fa-solid fa-paper-plane"></i> Submit Review
+                </button>
+            </form>
+        </div>
+
+    </div>
 </div>
 
 </body>
