@@ -490,8 +490,20 @@ def not_found(e):
     return render_template('404.html'), 404
 
 
-create_table()
+_tables_ready = False
+
+@app.before_request
+def ensure_tables():
+    global _tables_ready
+    if not _tables_ready:
+        try:
+            create_table()
+            _tables_ready = True
+        except Exception as exc:
+            app.logger.error("DB table init failed: %s", exc)
+
 
 if __name__ == "__main__":
+    create_table()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true")
