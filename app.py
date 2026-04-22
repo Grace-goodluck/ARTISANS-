@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import bcrypt
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
@@ -9,6 +9,13 @@ load_dotenv()
 
 app = Flask(__name__, template_folder='templates')
 app.secret_key = os.environ.get("SECRET_KEY", "mysecretkey")
+
+@app.after_request
+def no_cache(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 def get_db_connection():
     conn = sqlite3.connect('database.db')
@@ -52,6 +59,10 @@ def create_table():
             whatsapp TEXT,
             instagram TEXT,
             facebook TEXT,
+            tiktok TEXT,
+            twitter TEXT,
+            youtube TEXT,
+            website TEXT,
             description TEXT,
             custom_orders TEXT,
             marketing TEXT,
@@ -160,6 +171,10 @@ def add_artisan():
         whatsapp = request.form.get("whatsapp", "")
         instagram = request.form.get("instagram", "")
         facebook = request.form.get("facebook", "")
+        tiktok = request.form.get("tiktok", "")
+        twitter = request.form.get("twitter", "")
+        youtube = request.form.get("youtube", "")
+        website = request.form.get("website", "")
         description = request.form.get("description", "")
         custom_orders = request.form.get("custom_orders", "")
         marketing = ", ".join(request.form.getlist("marketing[]"))
@@ -176,8 +191,8 @@ def add_artisan():
             return render_template("add_artisan.html", error="An artisan with that name, skill, and phone number already exists.")
 
         conn.execute(
-            "INSERT INTO artisans (name, email, dob, gender, languages, skill, experience, certifications, availability, price_range, location, service_area, phone, whatsapp, instagram, facebook, description, custom_orders, marketing, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, email, dob, gender, languages, skill, experience, certifications, availability, price_range, location, service_area, phone, whatsapp, instagram, facebook, description, custom_orders, marketing, filename)
+            "INSERT INTO artisans (name, email, dob, gender, languages, skill, experience, certifications, availability, price_range, location, service_area, phone, whatsapp, instagram, facebook, tiktok, twitter, youtube, website, description, custom_orders, marketing, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, email, dob, gender, languages, skill, experience, certifications, availability, price_range, location, service_area, phone, whatsapp, instagram, facebook, tiktok, twitter, youtube, website, description, custom_orders, marketing, filename)
         )
         artisan_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
@@ -234,7 +249,7 @@ def login():
         if user:
             if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
                 session["user_id"] = user["id"]
-                return redirect(url_for('show_users', message="Login successful"))
+                return redirect(url_for('home'))
             else:
                 return render_template("login.html", error="Incorrect password")
         else:
@@ -339,6 +354,90 @@ def artisan_profile(id):
         review_count=review_count,
         portfolio=portfolio
     )
+
+@app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])
+def edit_artisan(id):
+    if "user_id" not in session:
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    artisan_row = conn.execute("SELECT * FROM artisans WHERE id = ?", (id,)).fetchone()
+    if artisan_row is None:
+        conn.close()
+        return render_template('404.html'), 404
+    artisan = dict(artisan_row)
+
+    if request.method == 'POST':
+        fields = ['name','email','dob','gender','languages','skill','experience',
+                  'certifications','availability','price_range','service_area',
+                  'phone','whatsapp','instagram','facebook','tiktok','twitter',
+                  'youtube','website','description','custom_orders']
+        updates = {f: request.form.get(f, '') for f in fields}
+
+        city = request.form.get('city', '')
+        state = request.form.get('state', '')
+        updates['location'] = city + ', ' + state if city or state else artisan['location']
+        updates['marketing'] = ', '.join(request.form.getlist('marketing[]'))
+
+        profile_pic = request.files.get('profile_pic')
+        if profile_pic and allowed_file(profile_pic.filename):
+            filename = secure_filename(profile_pic.filename)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            profile_pic.save(os.path.join(UPLOAD_FOLDER, filename))
+            updates['image'] = filename
+        else:
+            updates['image'] = artisan['image']
+
+        conn.execute('''UPDATE artisans SET
+            name=?, email=?, dob=?, gender=?, languages=?, skill=?, experience=?,
+            certifications=?, availability=?, price_range=?, location=?, service_area=?,
+            phone=?, whatsapp=?, instagram=?, facebook=?, tiktok=?, twitter=?,
+            youtube=?, website=?, description=?, custom_orders=?, marketing=?, image=?
+            WHERE id=?''',
+            (updates['name'], updates['email'], updates['dob'], updates['gender'],
+             updates['languages'], updates['skill'], updates['experience'],
+             updates['certifications'], updates['availability'], updates['price_range'],
+             updates['location'], updates['service_area'], updates['phone'],
+             updates['whatsapp'], updates['instagram'], updates['facebook'],
+             updates['tiktok'], updates['twitter'], updates['youtube'], updates['website'],
+             updates['description'], updates['custom_orders'], updates['marketing'],
+             updates['image'], id))
+
+        portfolio_files = request.files.getlist('portfolio')
+        for photo in portfolio_files[:5]:
+            if photo and photo.filename and allowed_file(photo.filename):
+                photo_filename = secure_filename(photo.filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                photo.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+                conn.execute("INSERT INTO portfolios (artisan_id, image) VALUES (?, ?)",
+                             (id, photo_filename))
+
+        conn.commit()
+        conn.close()
+        return redirect(url_for('artisan_profile', id=id))
+
+    portfolio = conn.execute("SELECT id, image FROM portfolios WHERE artisan_id = ?", (id,)).fetchall()
+    conn.close()
+
+    location_parts = (artisan.get('location') or '').split(', ', 1)
+    city = location_parts[0] if len(location_parts) > 0 else ''
+    state = location_parts[1] if len(location_parts) > 1 else ''
+
+    return render_template('edit_artisan.html', artisan=artisan, portfolio=portfolio, city=city, state=state)
+
+
+@app.route('/artisan/<int:id>/delete-photo/<int:photo_id>', methods=['POST'])
+def delete_portfolio_photo(id, photo_id):
+    if "user_id" not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    photo = conn.execute("SELECT image FROM portfolios WHERE id = ? AND artisan_id = ?", (photo_id, id)).fetchone()
+    if photo:
+        conn.execute("DELETE FROM portfolios WHERE id = ?", (photo_id,))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('edit_artisan', id=id))
+
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():

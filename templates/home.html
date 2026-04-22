@@ -3,59 +3,456 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artisaan App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Artisaan's Crib</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f0; color: #222; }
+
+        /* SPLASH SCREEN */
+        #splash {
+            position: fixed;
+            inset: 0;
+            background: #022f05;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        #splash.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .splash-logo {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #c49b3a;
+            box-shadow: 0 0 40px rgba(196,155,58,0.4);
+            animation: splashPulse 1.5s ease-in-out infinite alternate;
+            margin-bottom: 28px;
+        }
+
+        @keyframes splashPulse {
+            from { box-shadow: 0 0 20px rgba(196,155,58,0.3); transform: scale(1); }
+            to   { box-shadow: 0 0 50px rgba(196,155,58,0.6); transform: scale(1.04); }
+        }
+
+        .splash-name {
+            font-size: 38px;
+            font-weight: 900;
+            color: #fff8dc;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            animation: fadeUp 0.8s ease both;
+        }
+
+        .splash-name span { color: #c49b3a; }
+
+        .splash-tagline {
+            font-size: 15px;
+            color: rgba(255,248,220,0.55);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            animation: fadeUp 0.8s ease 0.2s both;
+        }
+
+        .splash-dots {
+            display: flex;
+            gap: 8px;
+            margin-top: 48px;
+            animation: fadeUp 0.8s ease 0.4s both;
+        }
+
+        .splash-dots span {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #c49b3a;
+            animation: dotBounce 1.2s ease-in-out infinite;
+        }
+        .splash-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .splash-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotBounce {
+            0%, 100% { opacity: 0.3; transform: translateY(0); }
+            50%       { opacity: 1;   transform: translateY(-6px); }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 14px 40px;
+            background: #022f05;
+            border-bottom: 2px solid #c49b3a;
+        }
+        nav .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: auto;
+            text-decoration: none;
+            color: #fff8dc;
+            font-weight: 800;
+            font-size: 18px;
+        }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s, color 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        .nav-register {
+            background: #c49b3a !important;
+            color: #022f05 !important;
+            font-weight: 800 !important;
+            padding: 9px 22px;
+            border-radius: 25px;
+            opacity: 1 !important;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-register:hover { background: #e0b84a !important; }
+
+        /* HERO */
+        .hero {
+            background: linear-gradient(135deg, #022f05 60%, #044a08 100%);
+            color: #fff8dc;
+            padding: 90px 40px;
+            text-align: center;
+        }
+        .hero h1 { font-size: 50px; font-weight: 900; margin-bottom: 18px; letter-spacing: -1px; }
+        .hero h1 span { color: #c49b3a; }
+        .hero p { font-size: 18px; opacity: 0.8; max-width: 580px; margin: 0 auto 38px; line-height: 1.75; }
+        .hero-btns { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+
+        .btn-gold {
+            background: #c49b3a;
+            color: #022f05;
+            padding: 14px 36px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 16px;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(196,155,58,0.4); }
+
+        .btn-outline {
+            background: transparent;
+            color: #fff8dc;
+            padding: 14px 36px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 16px;
+            text-decoration: none;
+            border: 2px solid rgba(255,248,220,0.4);
+            transition: border-color 0.2s, color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-outline:hover { border-color: #c49b3a; color: #c49b3a; }
+
+        /* SECTION WRAPPER */
+        .section { padding: 70px 40px; max-width: 1080px; margin: 0 auto; }
+        .section-title {
+            text-align: center;
+            font-size: 30px;
+            font-weight: 800;
+            color: #022f05;
+            margin-bottom: 12px;
+        }
+        .section-sub {
+            text-align: center;
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 48px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.7;
+        }
+
+        /* ABOUT CARDS */
+        .about-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+            margin-bottom: 50px;
+        }
+        .about-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border-top: 4px solid #c49b3a;
+            text-align: center;
+        }
+        .about-card i { font-size: 34px; color: #022f05; margin-bottom: 16px; }
+        .about-card h3 { font-size: 17px; color: #022f05; margin-bottom: 10px; font-weight: 700; }
+        .about-card p { font-size: 14px; color: #555; line-height: 1.7; }
+
+        /* ABOUT TEXT BLOCK */
+        .about-text-block {
+            background: #022f05;
+            color: #fff8dc;
+            border-radius: 20px;
+            padding: 48px 52px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+        @media (max-width: 700px) {
+            .about-text-block { grid-template-columns: 1fr; padding: 32px 24px; }
+            .hero h1 { font-size: 34px; }
+            .section { padding: 50px 20px; }
+            nav { padding: 14px 20px; gap: 14px; }
+        }
+        .about-text-block h3 { font-size: 20px; font-weight: 800; color: #c49b3a; margin-bottom: 12px; }
+        .about-text-block p { font-size: 15px; opacity: 0.85; line-height: 1.8; }
+
+        /* BENEFITS */
+        .benefits-list { display: flex; flex-direction: column; gap: 14px; }
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .benefit-item i { font-size: 22px; color: #c49b3a; margin-top: 2px; flex-shrink: 0; }
+        .benefit-item h4 { font-size: 15px; color: #022f05; margin-bottom: 4px; font-weight: 700; }
+        .benefit-item p { font-size: 13px; color: #666; line-height: 1.6; }
+
+        /* HOW IT WORKS */
+        .steps-bg { background: #f0f0ea; padding: 70px 40px; }
+        .steps-wrap { max-width: 900px; margin: 0 auto; }
+        .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; }
+        .step-box { text-align: center; }
+        .step-num {
+            width: 54px; height: 54px;
+            border-radius: 50%;
+            background: #022f05;
+            color: #c49b3a;
+            font-size: 22px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .step-box h4 { font-size: 15px; color: #022f05; font-weight: 700; margin-bottom: 8px; }
+        .step-box p { font-size: 13px; color: #666; line-height: 1.6; }
+
+        /* CTA BANNER */
+        .cta-banner {
+            background: #022f05;
+            color: #fff8dc;
+            text-align: center;
+            padding: 70px 40px;
+        }
+        .cta-banner h2 { font-size: 32px; font-weight: 800; margin-bottom: 14px; }
+        .cta-banner p { opacity: 0.75; margin-bottom: 32px; font-size: 17px; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+        footer {
+            background: #011a03;
+            color: rgba(255,248,220,0.45);
+            text-align: center;
+            padding: 22px;
+            font-size: 13px;
+        }
+    </style>
 </head>
-<body style="text-align: center;">
-    
-<nav>
-    <img src="/static/logo.jpeg" width="50" style="margin-right: 10px;">
+<body>
 
-    <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/artisans">Find Artisan</a>
-        <a href="/add-artisan">Register as Artisan</a>
-        <a href="/register">Register</a>
-        <a href="/login">Login</a>
+<!-- SPLASH SCREEN -->
+<div id="splash">
+    <img src="/static/logo.jpeg" class="splash-logo" alt="Artisaan's Crib">
+    <div class="splash-name">Artisaan's <span>Crib</span></div>
+    <div class="splash-tagline">Find Skilled Artisans Near You</div>
+    <div class="splash-dots">
+        <span></span><span></span><span></span>
     </div>
-</nav>    
-    <h1>Welcome to Artisaan's Crib</h1>
-    <p>Find trusted artisans for your everyday needs...</p>
-    <a href="/artisans">
-        <button>Find an Artisan</button>
+</div>
+
+<script>
+    window.addEventListener('load', function () {
+        setTimeout(function () {
+            document.getElementById('splash').classList.add('hidden');
+        }, 4500);
+    });
+</script>
+
+<nav>
+    <a href="/" class="brand">
+        <img src="/static/logo.jpeg" alt="Logo">
+        Artisaan's Crib
     </a>
-<hr>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+    {% if session.user_id %}
+        <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    {% else %}
+        <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+    {% endif %}
+</nav>
 
-<h2>What is Artisaan Crib</h2>
+<!-- HERO -->
+<div class="hero">
+    <h1>Find Skilled <span>Artisans</span><br>Near You</h1>
+    <p>Connect with trusted, verified artisans for all your everyday needs. From plumbing to fashion design, everything is in one place.</p>
+    <div class="hero-btns">
+        <a href="/artisans" class="btn-gold"><i class="fa-solid fa-magnifying-glass"></i> Find an Artisan</a>
+        <a href="/add-artisan" class="btn-outline"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+    </div>
+</div>
 
-<p>
-    Artisaan's Crib is a platform designed to connect people with trusted and skilled artisans
-    for their everyday needs. Whether you need a plumber, electrician, tailor, or any other professional service.
-    Artisaan's Crib helps you find the right person quickly and easily.
-    With Artisaan's Crib, you no longer need to struggle to find dependable help, everything you need is
-    in one place.
-</p>
+<!-- ABOUT THE PLATFORM -->
+<div class="section">
+    <h2 class="section-title">What is Artisaan's Crib?</h2>
+    <p class="section-sub">A dedicated platform built to bridge the gap between skilled artisans and the people who need them, right across Nigeria.</p>
 
-<h3>What You Can Do</h3>
-<ul>
-    <li>Find trusted artisans near you.</li>
-    <li>View artisan's profile and skill.</li>
-    <li>Choose professionals based on your needs.</li>
-</ul>
+    <div class="about-grid">
+        <div class="about-card">
+            <i class="fa-solid fa-bullseye"></i>
+            <h3>Our Mission</h3>
+            <p>To make it effortless for everyday Nigerians to find dependable, skilled artisans in their area without the usual stress of word of mouth or trial and error.</p>
+        </div>
+        <div class="about-card">
+            <i class="fa-solid fa-eye"></i>
+            <h3>Our Vision</h3>
+            <p>To become Nigeria's most trusted directory of skilled tradespeople, empowering artisans to grow their business and clients to find quality service with confidence.</p>
+        </div>
+        <div class="about-card">
+            <i class="fa-solid fa-handshake"></i>
+            <h3>Our Values</h3>
+            <p>Trust, transparency, and quality. We believe every artisan deserves visibility and every client deserves reliable service.</p>
+        </div>
+        <div class="about-card">
+            <i class="fa-solid fa-users"></i>
+            <h3>Who It Is For</h3>
+            <p>For homeowners, businesses, and individuals who need skilled help fast, and for artisans who want more clients without expensive advertising.</p>
+        </div>
+    </div>
 
-<h3>Our Mission</h3>
-<p>
-    Our goal is to make it simple for users to discover reliable artisans, view their profiles, and choose
-    based on their skills and experience. We aim to build trust between artisans and clients by providing 
-    a space where quality service meets convenience.
-</p>
+    <div class="about-text-block">
+        <div>
+            <h3>The Problem We Solve</h3>
+            <p>Finding a reliable artisan in Nigeria has always been a challenge. Most people rely on referrals that often fall through, or end up hiring unqualified hands that waste their time and money. Artisaan's Crib changes that by giving every artisan a professional profile with verified skills, reviews, and contact details all in one place.</p>
+        </div>
+        <div>
+            <h3>How We Help Artisans</h3>
+            <p>Whether you are a carpenter, electrician, tailor, makeup artist, plumber, or any other skilled professional, Artisaan's Crib gives you a platform to showcase your portfolio, list your services, and get discovered by clients who are actively looking for what you offer. No expensive ads, no middlemen, just direct connections.</p>
+        </div>
+    </div>
+</div>
 
-<h3>Why use Artisaan's Crib?</h3>
-<ul>
-    <li>Fast and easy access to services.</li>
-    <li>Reliable and skilled professionals.</li>
-    <li>Everything in one place.</li>
-</ul>
+<!-- BENEFITS -->
+<div class="section" style="padding-top:0;">
+    <h2 class="section-title">Why Choose Artisaan's Crib?</h2>
+    <p class="section-sub">Everything you need to find or be found as a skilled artisan, all in one platform.</p>
+    <div class="benefits-list">
+        <div class="benefit-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <div>
+                <h4>Verified Profiles</h4>
+                <p>Every artisan registers with real details including skills, experience, location, and portfolio photos so you know exactly who you are hiring.</p>
+            </div>
+        </div>
+        <div class="benefit-item">
+            <i class="fa-solid fa-star"></i>
+            <div>
+                <h4>Honest Reviews and Ratings</h4>
+                <p>Clients leave real reviews after each job. Ratings help you choose the best artisan based on other people's genuine experience.</p>
+            </div>
+        </div>
+        <div class="benefit-item">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <div>
+                <h4>Find Artisans Anywhere in Nigeria</h4>
+                <p>Search by skill and location across all 36 states. Whether you are in Lagos, Abuja, Port Harcourt, or anywhere else, help is nearby.</p>
+            </div>
+        </div>
+        <div class="benefit-item">
+            <i class="fa-solid fa-bolt"></i>
+            <div>
+                <h4>Fast, Direct Contact</h4>
+                <p>Call, WhatsApp, or email any artisan directly from their profile. No waiting, no booking fees, no intermediaries.</p>
+            </div>
+        </div>
+        <div class="benefit-item">
+            <i class="fa-solid fa-images"></i>
+            <div>
+                <h4>Portfolio Showcase</h4>
+                <p>Artisans upload photos of their actual work so clients can judge quality before making contact. See before you hire.</p>
+            </div>
+        </div>
+        <div class="benefit-item">
+            <i class="fa-solid fa-naira-sign"></i>
+            <div>
+                <h4>Completely Free to Use</h4>
+                <p>Listing on Artisaan's Crib is free for artisans and free for clients. No subscription, no commission, no hidden charges.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="steps-bg">
+    <div class="steps-wrap">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-sub" style="margin-bottom:40px;">Getting started takes less than 5 minutes.</p>
+        <div class="steps-grid">
+            <div class="step-box">
+                <div class="step-num">1</div>
+                <h4>Search for a Skill</h4>
+                <p>Type the service you need and your location to see matching artisans instantly.</p>
+            </div>
+            <div class="step-box">
+                <div class="step-num">2</div>
+                <h4>Browse Profiles</h4>
+                <p>View full profiles with photos, experience, ratings, and pricing before deciding.</p>
+            </div>
+            <div class="step-box">
+                <div class="step-num">3</div>
+                <h4>Contact Directly</h4>
+                <p>Call or WhatsApp the artisan straight from the platform. No middleman involved.</p>
+            </div>
+            <div class="step-box">
+                <div class="step-num">4</div>
+                <h4>Leave a Review</h4>
+                <p>After the job is done, share your experience to help others make better choices.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA BANNER -->
+<div class="cta-banner">
+    <h2>Are You a Skilled Artisan?</h2>
+    <p>Join the platform and start getting discovered by clients looking for exactly what you do.</p>
+    <a href="/add-artisan" class="btn-gold"><i class="fa-solid fa-pen-to-square"></i> Register Your Profile Now</a>
+</div>
+
+<footer>
+    &copy; 2026 Artisaan's Crib. All rights reserved.
+</footer>
 
 </body>
 </html>

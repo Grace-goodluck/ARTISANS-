@@ -11,9 +11,13 @@
 <nav>
     <a href="/">Home</a>
     <a href="/artisans">Find Artisan</a>
-    <a href="/add-artisan">Register as Artisan</a>
-    <a href="/register">Register</a>
-    <a href="/login">Login</a>
+    {% if session.user_id %}
+        <a href="/add-artisan">Register as Artisan</a>
+        <a href="/logout">Logout</a>
+    {% else %}
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+    {% endif %}
 </nav>
 
 <h1>Available Artisans</h1>

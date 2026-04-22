@@ -457,7 +457,7 @@
     <div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
     {% endif %}
 
-    <form method="POST" enctype="multipart/form-data" id="artisan-form">
+    <form method="POST" enctype="multipart/form-data" id="artisan-form" novalidate>
 
         <!-- STEP 1: PERSONAL INFO -->
         <div class="step-card active" id="step-1">
@@ -648,12 +648,28 @@
             </div>
             <div class="field-grid">
                 <div class="field">
-                    <label>Instagram Handle</label>
+                    <label>Instagram</label>
                     <input type="text" name="instagram" placeholder="e.g. @gracetailors">
                 </div>
                 <div class="field">
-                    <label>Facebook Profile / Page</label>
+                    <label>Facebook</label>
                     <input type="text" name="facebook" placeholder="e.g. facebook.com/gracetailors">
+                </div>
+                <div class="field">
+                    <label>TikTok</label>
+                    <input type="text" name="tiktok" placeholder="e.g. @gracetailors">
+                </div>
+                <div class="field">
+                    <label>Twitter / X</label>
+                    <input type="text" name="twitter" placeholder="e.g. @gracetailors">
+                </div>
+                <div class="field">
+                    <label>YouTube</label>
+                    <input type="text" name="youtube" placeholder="e.g. youtube.com/gracetailors">
+                </div>
+                <div class="field">
+                    <label>Website / Portfolio Link</label>
+                    <input type="url" name="website" placeholder="e.g. https://gracetailors.com">
                 </div>
                 <div class="field full">
                     <label>About You / Description <span class="req">*</span></label>
@@ -708,7 +724,7 @@
             <div class="review-grid" id="review-summary"></div>
 
             <div class="terms-box">
-                <input type="checkbox" name="terms" id="terms" required>
+                <input type="checkbox" name="terms" id="terms">
                 <label for="terms">
                     I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>.
                     I confirm that all information provided is accurate.
@@ -718,7 +734,7 @@
             <div class="btn-row">
                 <button type="button" class="btn btn-prev" onclick="goPrev(6)"><i class="fa-solid fa-arrow-left"></i> Back</button>
                 <span class="step-counter">Step 6 of 6</span>
-                <button type="submit" class="btn btn-submit">
+                <button type="button" class="btn btn-submit" onclick="submitForm()">
                     <i class="fa-solid fa-paper-plane"></i> Submit Registration
                 </button>
             </div>
@@ -791,6 +807,14 @@
         return checked.length ? checked.join(', ') : '—';
     }
 
+    function submitForm() {
+        if (!document.getElementById('terms').checked) {
+            alert('Please agree to the Terms & Conditions before submitting.');
+            return;
+        }
+        document.getElementById('artisan-form').submit();
+    }
+
     function buildReview() {
         const fields = [
             ['Full Name', getVal('name')],
@@ -810,6 +834,10 @@
             ['WhatsApp', getVal('whatsapp')],
             ['Instagram', getVal('instagram')],
             ['Facebook', getVal('facebook')],
+            ['TikTok', getVal('tiktok')],
+            ['Twitter / X', getVal('twitter')],
+            ['YouTube', getVal('youtube')],
+            ['Website', getVal('website')],
             ['Custom Orders', getChecked('custom_orders')],
             ['Marketing', getChecked('marketing[]')],
             ['Profile Picture', getVal('profile_pic')],

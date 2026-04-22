@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile — {{ artisan.name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #022f05; font-family: 'Segoe UI', Arial, sans-serif; color: #fff8dc; min-height: 100vh; }
+
+        nav {
+            display: flex; align-items: center; gap: 24px;
+            padding: 14px 40px; background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(196,155,58,0.3);
+        }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; }
+        nav a:hover { color: #c49b3a; opacity: 1; }
+        nav a:first-child { margin-right: auto; font-weight: 800; font-size: 17px; opacity: 1; }
+
+        .page-header {
+            text-align: center; padding: 40px 20px 10px;
+        }
+        .page-header h1 { font-size: 28px; font-weight: 800; color: #fff8dc; margin-bottom: 6px; }
+        .page-header p { color: rgba(255,248,220,0.6); font-size: 15px; }
+
+        .form-wrap { max-width: 860px; margin: 0 auto; padding: 30px 20px 60px; }
+
+        .section-block {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(196,155,58,0.2);
+            border-radius: 16px;
+            padding: 28px 30px;
+            margin-bottom: 24px;
+        }
+        .section-block h3 {
+            font-size: 14px; font-weight: 700; color: #c49b3a;
+            text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .field-grid .full { grid-column: 1 / -1; }
+        @media (max-width: 600px) { .field-grid { grid-template-columns: 1fr; } .field-grid .full { grid-column: 1; } }
+
+        .field label {
+            display: block; font-size: 12px; font-weight: 700;
+            color: #c49b3a; text-transform: uppercase; letter-spacing: 0.8px;
+            margin-bottom: 7px;
+        }
+        .field input, .field select, .field textarea {
+            width: 100%; padding: 11px 14px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(196,155,58,0.3);
+            border-radius: 8px; color: #fff8dc;
+            font-size: 14px; font-family: inherit;
+            outline: none; transition: border-color 0.2s;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: #c49b3a; }
+        .field select option { background: #022f05; }
+        .field textarea { resize: vertical; }
+        .field input[type="file"] { padding: 8px; cursor: pointer; }
+
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .checkbox-item {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(196,155,58,0.25);
+            border-radius: 8px; padding: 8px 14px;
+            font-size: 13px; cursor: pointer;
+        }
+        .checkbox-item input { width: auto; }
+
+        /* PORTFOLIO GRID */
+        .portfolio-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+        .portfolio-item { position: relative; }
+        .portfolio-item img {
+            width: 110px; height: 110px; object-fit: cover;
+            border-radius: 10px; border: 1px solid rgba(196,155,58,0.3);
+            display: block;
+        }
+        .delete-photo-btn {
+            position: absolute; top: 4px; right: 4px;
+            background: rgba(220,53,69,0.85);
+            color: white; border: none; border-radius: 50%;
+            width: 24px; height: 24px; font-size: 11px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .delete-photo-btn:hover { background: #dc3545; }
+
+        .no-photos { font-size: 13px; color: rgba(255,248,220,0.4); font-style: italic; margin-bottom: 12px; }
+
+        .file-hint { font-size: 12px; color: rgba(255,248,220,0.4); margin-top: 5px; display: block; }
+
+        .btn-row { display: flex; gap: 14px; justify-content: flex-end; margin-top: 10px; }
+        .btn-save {
+            background: #c49b3a; color: #022f05;
+            font-weight: 800; font-size: 15px;
+            padding: 13px 36px; border: none;
+            border-radius: 30px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(196,155,58,0.4); }
+        .btn-cancel {
+            background: transparent;
+            color: rgba(255,248,220,0.7);
+            font-size: 15px; font-weight: 600;
+            padding: 13px 28px;
+            border: 1px solid rgba(255,248,220,0.2);
+            border-radius: 30px; cursor: pointer;
+            text-decoration: none;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-cancel:hover { border-color: #c49b3a; color: #c49b3a; }
+
+        .current-pic { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+        .current-pic img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #c49b3a; }
+        .current-pic span { font-size: 13px; color: rgba(255,248,220,0.6); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
+    <a href="/artisan/{{ artisan.id }}"><i class="fa-solid fa-arrow-left"></i> Back to Profile</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+</nav>
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-pen-to-square" style="color:#c49b3a;"></i> Edit Profile</h1>
+    <p>Update {{ artisan.name }}'s information below</p>
+</div>
+
+<div class="form-wrap">
+<form method="POST" enctype="multipart/form-data">
+
+    <!-- PERSONAL INFO -->
+    <div class="section-block">
+        <h3><i class="fa-solid fa-user"></i> Personal Information</h3>
+        <div class="field-grid">
+            <div class="field">
+                <label>Full Name</label>
+                <input type="text" name="name" value="{{ artisan.name or '' }}" required>
+            </div>
+            <div class="field">
+                <label>Email</label>
+                <input type="email" name="email" value="{{ artisan.email or '' }}">
+            </div>
+            <div class="field">
+                <label>Date of Birth</label>
+                <input type="date" name="dob" value="{{ artisan.dob or '' }}">
+            </div>
+            <div class="field">
+                <label>Gender</label>
+                <select name="gender">
+                    <option value="">Select gender</option>
+                    <option value="Male" {% if artisan.gender == 'Male' %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if artisan.gender == 'Female' %}selected{% endif %}>Female</option>
+                    <option value="Prefer not to say" {% if artisan.gender == 'Prefer not to say' %}selected{% endif %}>Prefer not to say</option>
+                </select>
+            </div>
+            <div class="field full">
+                <label>Languages Spoken</label>
+                <input type="text" name="languages" value="{{ artisan.languages or '' }}" placeholder="e.g. English, Yoruba, Igbo">
+            </div>
+        </div>
+    </div>
+
+    <!-- SKILLS & WORK -->
+    <div class="section-block">
+        <h3><i class="fa-solid fa-briefcase"></i> Skills & Work</h3>
+        <div class="field-grid">
+            <div class="field">
+                <label>Skill / Trade</label>
+                <input type="text" name="skill" value="{{ artisan.skill or '' }}" required>
+            </div>
+            <div class="field">
+                <label>Years of Experience</label>
+                <input type="number" name="experience" value="{{ artisan.experience or '' }}" min="0" max="60">
+            </div>
+            <div class="field full">
+                <label>Certifications / Qualifications</label>
+                <input type="text" name="certifications" value="{{ artisan.certifications or '' }}">
+            </div>
+            <div class="field">
+                <label>Availability</label>
+                <select name="availability">
+                    <option value="">Select availability</option>
+                    {% for opt in ['Full-time','Part-time','Weekends only','By appointment','Flexible'] %}
+                    <option value="{{ opt }}" {% if artisan.availability == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>Price Range</label>
+                <input type="text" name="price_range" value="{{ artisan.price_range or '' }}" placeholder="e.g. ₦5,000 – ₦20,000">
+            </div>
+            <div class="field full">
+                <label>Custom Orders</label>
+                <div class="checkbox-group">
+                    {% for opt in ['Yes','No','Negotiable'] %}
+                    <label class="checkbox-item">
+                        <input type="radio" name="custom_orders" value="{{ opt }}" {% if artisan.custom_orders == opt %}checked{% endif %}> {{ opt }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="field full">
+                <label>Marketing Channels</label>
+                <div class="checkbox-group">
+                    {% set marketing_list = (artisan.marketing or '').split(', ') %}
+                    {% for opt in ['Online','Local Shop','Referrals','Trade Fairs','Export','Social Media'] %}
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="marketing[]" value="{{ opt }}" {% if opt in marketing_list %}checked{% endif %}> {{ opt }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="field full">
+                <label>About / Description</label>
+                <textarea name="description" rows="4">{{ artisan.description or '' }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOCATION & CONTACT -->
+    <div class="section-block">
+        <h3><i class="fa-solid fa-location-dot"></i> Location & Contact</h3>
+        <div class="field-grid">
+            <div class="field">
+                <label>City</label>
+                <input type="text" name="city" value="{{ city }}">
+            </div>
+            <div class="field">
+                <label>State</label>
+                <input type="text" name="state" value="{{ state }}">
+            </div>
+            <div class="field full">
+                <label>Service Area</label>
+                <input type="text" name="service_area" value="{{ artisan.service_area or '' }}" placeholder="e.g. Lagos Island, Victoria Island">
+            </div>
+            <div class="field">
+                <label>Phone</label>
+                <input type="tel" name="phone" value="{{ artisan.phone or '' }}">
+            </div>
+            <div class="field">
+                <label>WhatsApp</label>
+                <input type="tel" name="whatsapp" value="{{ artisan.whatsapp or '' }}">
+            </div>
+        </div>
+    </div>
+
+    <!-- SOCIAL MEDIA -->
+    <div class="section-block">
+        <h3><i class="fa-solid fa-share-nodes"></i> Social Media & Links</h3>
+        <div class="field-grid">
+            <div class="field">
+                <label>Instagram</label>
+                <input type="text" name="instagram" value="{{ artisan.instagram or '' }}" placeholder="@handle">
+            </div>
+            <div class="field">
+                <label>Facebook</label>
+                <input type="text" name="facebook" value="{{ artisan.facebook or '' }}">
+            </div>
+            <div class="field">
+                <label>TikTok</label>
+                <input type="text" name="tiktok" value="{{ artisan.tiktok or '' }}" placeholder="@handle">
+            </div>
+            <div class="field">
+                <label>Twitter / X</label>
+                <input type="text" name="twitter" value="{{ artisan.twitter or '' }}" placeholder="@handle">
+            </div>
+            <div class="field">
+                <label>YouTube</label>
+                <input type="text" name="youtube" value="{{ artisan.youtube or '' }}">
+            </div>
+            <div class="field">
+                <label>Website</label>
+                <input type="url" name="website" value="{{ artisan.website or '' }}" placeholder="https://...">
+            </div>
+        </div>
+    </div>
+
+    <!-- PHOTOS -->
+    <div class="section-block">
+        <h3><i class="fa-solid fa-images"></i> Photos</h3>
+
+        <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:10px;">Profile Picture</label>
+        {% if artisan.image %}
+        <div class="current-pic">
+            <img src="/static/uploads/{{ artisan.image }}" alt="Current profile pic">
+            <span>Current profile picture — upload a new one below to replace it</span>
+        </div>
+        {% endif %}
+        <div class="field">
+            <input type="file" name="profile_pic" accept="image/*">
+            <span class="file-hint">Leave empty to keep current picture. Accepted: JPG, PNG, JPEG, GIF, WEBP</span>
+        </div>
+
+        <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;display:block;margin:20px 0 10px;">Portfolio / Work Photos</label>
+
+        {% if portfolio %}
+        <div class="portfolio-grid">
+            {% for photo in portfolio %}
+            <div class="portfolio-item">
+                <img src="/static/uploads/{{ photo.image }}" alt="Portfolio photo">
+                <form method="POST" action="/artisan/{{ artisan.id }}/delete-photo/{{ photo.id }}" style="display:inline;" onsubmit="return confirm('Remove this photo?')">
+                    <button type="submit" class="delete-photo-btn" title="Remove photo"><i class="fa-solid fa-xmark"></i></button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-photos">No portfolio photos yet.</p>
+        {% endif %}
+
+        <div class="field">
+            <input type="file" name="portfolio" accept="image/*" multiple>
+            <span class="file-hint">Add up to 5 new photos of your work. Existing photos are kept.</span>
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <a href="/artisan/{{ artisan.id }}" class="btn-cancel"><i class="fa-solid fa-xmark"></i> Cancel</a>
+        <button type="submit" class="btn-save"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+    </div>
+
+</form>
+</div>
+
+</body>
+</html>

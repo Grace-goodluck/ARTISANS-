@@ -3,37 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Users</title>
+    <title>Dashboard — Artisaan's Crib</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { background: #f5f5f0; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 14px 40px;
+            background: #022f05;
+            border-bottom: 2px solid #c49b3a;
+        }
+
+        nav a {
+            color: #fff8dc;
+            text-decoration: none;
+            font-size: 15px;
+            opacity: 0.85;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        nav a:first-child { margin-right: auto; font-weight: bold; font-size: 17px; opacity: 1; }
+
+        .nav-btn {
+            background: #c49b3a;
+            color: #022f05 !important;
+            font-weight: 700;
+            padding: 8px 20px;
+            border-radius: 20px;
+            opacity: 1 !important;
+        }
+
+        .nav-btn:hover { background: #e0b84a; }
+
+        .page-wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
+        .page-title { font-size: 26px; font-weight: 800; color: #022f05; margin-bottom: 6px; }
+        .page-sub { color: #555; margin-bottom: 30px; font-size: 14px; }
+
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .user-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .user-card h3 { margin: 0 0 6px; font-size: 16px; color: #022f05; }
+        .user-card p { margin: 0 0 16px; font-size: 13px; color: #666; }
+
+        .card-actions { display: flex; gap: 8px; }
+
+        .edit-btn {
+            padding: 7px 16px;
+            background: #022f05;
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            padding: 7px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
 
 <nav>
-    <a href="/">Home</a>
+    <a href="/">Artisaan's Crib</a>
     <a href="/artisans">Find Artisan</a>
-    <a href="/add-artisan">Register as Artisan</a>
+    <a href="/add-artisan" class="nav-btn">+ Register as Artisan</a>
     <a href="/logout">Logout</a>
 </nav>
 
-<h1 class="title">Registered Users</h1>
+<div class="page-wrap">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">Manage registered users below.</p>
 
-{% if message %}
-    <p style="color: green;">{{ message }}</p>
-{% endif %}    
+    {% if message %}
+        <div class="success-msg">{{ message }}</div>
+    {% endif %}
 
-<div class="users-container">
-    {% for user in users %}
+    <div class="users-grid">
+        {% for user in users %}
         <div class="user-card">
             <h3>{{ user.name }}</h3>
             <p>{{ user.email }}</p>
-
-            <a href="/edit/{{ user.id }}" class="edit-btn">Edit</a>
-            <form method="POST" action="/delete/{{ user.id }}" style="display:inline;" onsubmit="return confirm('Delete this user?')">
-                <button type="submit" class="delete-btn">Delete</button>
-            </form>
+            <div class="card-actions">
+                <a href="/edit/{{ user.id }}" class="edit-btn">Edit</a>
+                <form method="POST" action="/delete/{{ user.id }}" style="display:inline;" onsubmit="return confirm('Delete this user?')">
+                    <button type="submit" class="delete-btn">Delete</button>
+                </form>
+            </div>
         </div>
-    {% endfor %}   
+        {% endfor %}
+    </div>
 </div>
-    
+
 </body>
 </html>

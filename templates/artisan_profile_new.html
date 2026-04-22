@@ -389,7 +389,13 @@
 <nav class="profile-nav">
     <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
     <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
-    <a href="/add-artisan"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+    {% if session.user_id %}
+        <a href="/add-artisan"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    {% else %}
+        <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+    {% endif %}
 </nav>
 
 <!-- HERO -->
@@ -434,6 +440,11 @@
 
 <!-- CONTACT -->
 <div class="contact-row">
+    {% if session.user_id %}
+    <a href="/artisan/{{ artisan.id }}/edit" class="cta-btn" style="background:rgba(196,155,58,0.15);color:#c49b3a;border:1px solid rgba(196,155,58,0.4);">
+        <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+    </a>
+    {% endif %}
     <a href="tel:{{ artisan.phone }}" class="cta-btn btn-call">
         <i class="fa-solid fa-phone"></i> Call
     </a>
@@ -506,6 +517,7 @@
     </div>
 
     <!-- SKILLS & WORK -->
+    {% if artisan.certifications or artisan.availability or artisan.price_range or artisan.service_area %}
     <div class="section-card">
         <div class="section-title"><i class="fa-solid fa-toolbox"></i> Skills & Work</div>
 
@@ -537,29 +549,47 @@
         </div>
         {% endif %}
     </div>
+    {% endif %}
 
     <!-- SOCIAL MEDIA -->
-    {% if artisan.instagram or artisan.facebook %}
+    {% if artisan.instagram or artisan.facebook or artisan.tiktok or artisan.twitter or artisan.youtube or artisan.website %}
     <div class="section-card">
-        <div class="section-title"><i class="fa-solid fa-share-nodes"></i> Social Media</div>
+        <div class="section-title"><i class="fa-solid fa-share-nodes"></i> Social Media & Links</div>
 
         {% if artisan.instagram %}
         <div class="detail-row">
             <i class="fa-brands fa-instagram"></i>
-            <div>
-                <span class="detail-label">Instagram</span>
-                <a href="{{ artisan.instagram }}" target="_blank" class="detail-value" style="color:#c49b3a; text-decoration:none;">{{ artisan.instagram }}</a>
-            </div>
+            <div><span class="detail-label">Instagram</span><a href="{{ artisan.instagram }}" target="_blank" class="detail-value" style="color:#c49b3a;text-decoration:none;">{{ artisan.instagram }}</a></div>
         </div>
         {% endif %}
-
         {% if artisan.facebook %}
         <div class="detail-row">
             <i class="fa-brands fa-facebook"></i>
-            <div>
-                <span class="detail-label">Facebook</span>
-                <a href="{{ artisan.facebook }}" target="_blank" class="detail-value" style="color:#c49b3a; text-decoration:none;">{{ artisan.facebook }}</a>
-            </div>
+            <div><span class="detail-label">Facebook</span><a href="{{ artisan.facebook }}" target="_blank" class="detail-value" style="color:#c49b3a;text-decoration:none;">{{ artisan.facebook }}</a></div>
+        </div>
+        {% endif %}
+        {% if artisan.tiktok %}
+        <div class="detail-row">
+            <i class="fa-brands fa-tiktok"></i>
+            <div><span class="detail-label">TikTok</span><a href="{{ artisan.tiktok }}" target="_blank" class="detail-value" style="color:#c49b3a;text-decoration:none;">{{ artisan.tiktok }}</a></div>
+        </div>
+        {% endif %}
+        {% if artisan.twitter %}
+        <div class="detail-row">
+            <i class="fa-brands fa-x-twitter"></i>
+            <div><span class="detail-label">Twitter / X</span><a href="{{ artisan.twitter }}" target="_blank" class="detail-value" style="color:#c49b3a;text-decoration:none;">{{ artisan.twitter }}</a></div>
+        </div>
+        {% endif %}
+        {% if artisan.youtube %}
+        <div class="detail-row">
+            <i class="fa-brands fa-youtube"></i>
+            <div><span class="detail-label">YouTube</span><a href="{{ artisan.youtube }}" target="_blank" class="detail-value" style="color:#c49b3a;text-decoration:none;">{{ artisan.youtube }}</a></div>
+        </div>
+        {% endif %}
+        {% if artisan.website %}
+        <div class="detail-row">
+            <i class="fa-solid fa-globe"></i>
+            <div><span class="detail-label">Website</span><a href="{{ artisan.website }}" target="_blank" class="detail-value" style="color:#c49b3a;text-decoration:none;">{{ artisan.website }}</a></div>
         </div>
         {% endif %}
     </div>
