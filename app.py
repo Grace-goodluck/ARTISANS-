@@ -254,13 +254,17 @@ def login():
         conn.close()
 
         if user:
-            if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
+            try:
+                password_match = bcrypt.checkpw(password.encode('utf-8'), user["password"])
+            except Exception:
+                password_match = False
+            if password_match:
                 session["user_id"] = user["id"]
                 return redirect(url_for('home'))
             else:
                 return render_template("login.html", error="Incorrect password")
         else:
-                return render_template("login.html", error="User not found")
+            return render_template("login.html", error="User not found")
 
     return render_template("login.html")
 
@@ -446,6 +450,14 @@ def delete_portfolio_photo(id, photo_id):
     return redirect(url_for('edit_artisan', id=id))
 
 
+@app.errorhandler(500)
+def internal_error(e):
+    return render_template('500.html'), 500
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('404.html'), 404
+
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     message = ""
@@ -470,7 +482,8 @@ def forgot_password():
     return render_template('forgot_password.html', message=message)
 
 
+create_table()
+
 if __name__ == "__main__":
-    create_table()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true")
