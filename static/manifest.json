@@ -1,0 +1,16 @@
+{
+  "name": "Artisaan's Crib",
+  "short_name": "ArtisaanCrib",
+  "description": "Find skilled artisans near you across Nigeria",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#022f05",
+  "theme_color": "#022f05",
+  "icons": [
+    { "src": "/static/logo.jpeg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "/static/logo.jpeg", "sizes": "512x512", "type": "image/jpeg" }
+  ],
+  "categories": ["business", "lifestyle", "utilities"],
+  "lang": "en-NG"
+}

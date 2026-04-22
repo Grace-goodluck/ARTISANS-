@@ -114,6 +114,13 @@ def insert_sample_artisans():
     conn.commit()
     conn.close()                                      
 
+@app.route("/sw.js")
+def service_worker():
+    response = make_response(app.send_static_file("sw.js"))
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
 @app.route("/")
 def home():
     return render_template("home.html")
