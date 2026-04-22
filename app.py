@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import ssl
+import urllib.parse
 import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
@@ -16,11 +18,46 @@ UPLOAD_FOLDER = "/tmp/uploads" if os.environ.get('VERCEL') else "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
+class _DictCursor:
+    """Wraps a pg8000 cursor so rows are returned as dicts (like RealDictCursor)."""
+    def __init__(self, cur):
+        self._cur = cur
+
+    def _to_dict(self, row):
+        if row is None:
+            return None
+        cols = [d[0] for d in self._cur.description]
+        return dict(zip(cols, row))
+
+    def fetchone(self):
+        return self._to_dict(self._cur.fetchone())
+
+    def fetchall(self):
+        rows = self._cur.fetchall()
+        if not rows:
+            return []
+        cols = [d[0] for d in self._cur.description]
+        return [dict(zip(cols, r)) for r in rows]
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+
 def get_db_connection():
     if DATABASE_URL:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+        import pg8000.dbapi
+        url = urllib.parse.urlparse(DATABASE_URL)
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        conn = pg8000.dbapi.connect(
+            host=url.hostname,
+            port=url.port or 5432,
+            database=url.path.lstrip('/'),
+            user=url.username,
+            password=url.password,
+            ssl_context=ssl_ctx,
+        )
         return conn
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
@@ -28,20 +65,20 @@ def get_db_connection():
 
 
 def db_execute(conn, sql, params=()):
-    """Run a query that does not need to return a new-row ID."""
     if DATABASE_URL:
         cur = conn.cursor()
         cur.execute(sql.replace('?', '%s'), params)
-        return cur
+        return _DictCursor(cur)
     return conn.execute(sql, params)
 
 
 def db_insert(conn, sql, params=()):
-    """Run an INSERT and return the new row's id."""
     if DATABASE_URL:
         cur = conn.cursor()
         cur.execute(sql.replace('?', '%s') + ' RETURNING id', params)
-        return cur.fetchone()['id']
+        row = cur.fetchone()
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row))['id']
     conn.execute(sql, params)
     return conn.execute('SELECT last_insert_rowid()').fetchone()[0]
 
