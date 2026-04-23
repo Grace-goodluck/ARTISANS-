@@ -43,19 +43,47 @@ class _DictCursor:
         return getattr(self._cur, name)
 
 
+def _parse_db_url(raw):
+    """Parse a PostgreSQL URL safely, handling special characters in passwords."""
+    s = raw.strip()
+    if '://' in s:
+        s = s.split('://', 1)[1]
+    # split off database name
+    if '/' in s:
+        hostpart, database = s.rsplit('/', 1)
+    else:
+        hostpart, database = s, 'postgres'
+    # use rfind so @ inside passwords is handled correctly
+    if '@' in hostpart:
+        idx = hostpart.rfind('@')
+        userinfo, hostinfo = hostpart[:idx], hostpart[idx+1:]
+    else:
+        userinfo, hostinfo = '', hostpart
+    if ':' in hostinfo:
+        host, port = hostinfo.rsplit(':', 1)
+        port = int(port)
+    else:
+        host, port = hostinfo, 5432
+    if ':' in userinfo:
+        user, password = userinfo.split(':', 1)
+    else:
+        user, password = userinfo, ''
+    return host, port, database, urllib.parse.unquote(user), urllib.parse.unquote(password)
+
+
 def get_db_connection():
     if DATABASE_URL:
         import pg8000.dbapi
-        url = urllib.parse.urlparse(DATABASE_URL)
+        host, port, database, user, password = _parse_db_url(DATABASE_URL)
         ssl_ctx = ssl.create_default_context()
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = ssl.CERT_NONE
         conn = pg8000.dbapi.connect(
-            host=url.hostname,
-            port=url.port or 5432,
-            database=url.path.lstrip('/'),
-            user=url.username,
-            password=url.password,
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
             ssl_context=ssl_ctx,
         )
         return conn
