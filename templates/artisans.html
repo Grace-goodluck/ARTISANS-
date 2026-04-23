@@ -38,7 +38,7 @@
             
             <div class="image-box">
                 {% if artisan.image %}
-                    <img src="{{ url_for('static', filename='uploads/' + artisan.image) }}">
+                    <img src="{{ artisan.image if artisan.image.startswith('http') else url_for('static', filename='uploads/' + artisan.image) }}">
                 {% endif %}
             </div>    
 

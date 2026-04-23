@@ -3,6 +3,8 @@ import os
 import ssl
 import urllib.parse
 import bcrypt
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -12,10 +14,24 @@ load_dotenv()
 app = Flask(__name__, template_folder='templates')
 app.secret_key = os.environ.get("SECRET_KEY", "mysecretkey")
 
+# ── Cloudinary config ──────────────────────────────────────────────────────────
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", "dcalqyzvn"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY", "633257313267431"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET", "liNm4wZs9rS7S714szeegemFfw"),
+    secure=True
+)
+
 # ── Database config ────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get("DATABASE_URL")  # set on Vercel → PostgreSQL
 UPLOAD_FOLDER = "/tmp/uploads" if os.environ.get('VERCEL') else "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def upload_image(file_obj):
+    """Upload a file to Cloudinary and return its secure URL."""
+    result = cloudinary.uploader.upload(file_obj, folder="artisaans-crib")
+    return result['secure_url']
 
 
 class _DictCursor:
@@ -254,9 +270,7 @@ def add_artisan():
         if not profile_pic or not allowed_file(profile_pic.filename):
             return render_template("add_artisan.html", error="Invalid file type. Allowed: png, jpg, jpeg, gif, webp")
 
-        filename = secure_filename(profile_pic.filename)
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        profile_pic.save(os.path.join(UPLOAD_FOLDER, filename))
+        image_url = upload_image(profile_pic)
 
         skill        = request.form["skill"]
         city         = request.form["city"]
@@ -295,14 +309,13 @@ def add_artisan():
 
         artisan_id = db_insert(conn,
             "INSERT INTO artisans (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,filename)
+            (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image_url)
         )
 
         for photo in request.files.getlist("portfolio")[:5]:
-            if photo and allowed_file(photo.filename):
-                pf = secure_filename(photo.filename)
-                photo.save(os.path.join(UPLOAD_FOLDER, pf))
-                db_execute(conn, "INSERT INTO portfolios (artisan_id, image) VALUES (?, ?)", (artisan_id, pf))
+            if photo and photo.filename and allowed_file(photo.filename):
+                photo_url = upload_image(photo)
+                db_execute(conn, "INSERT INTO portfolios (artisan_id, image) VALUES (?, ?)", (artisan_id, photo_url))
 
         conn.commit()
         conn.close()
@@ -457,11 +470,8 @@ def edit_artisan(id):
         u['marketing'] = ', '.join(request.form.getlist('marketing[]'))
 
         pic = request.files.get('profile_pic')
-        if pic and allowed_file(pic.filename):
-            fn = secure_filename(pic.filename)
-            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            pic.save(os.path.join(UPLOAD_FOLDER, fn))
-            u['image'] = fn
+        if pic and pic.filename and allowed_file(pic.filename):
+            u['image'] = upload_image(pic)
         else:
             u['image'] = artisan['image']
 
@@ -478,10 +488,8 @@ def edit_artisan(id):
 
         for photo in request.files.getlist('portfolio')[:5]:
             if photo and photo.filename and allowed_file(photo.filename):
-                pf = secure_filename(photo.filename)
-                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                photo.save(os.path.join(UPLOAD_FOLDER, pf))
-                db_execute(conn, "INSERT INTO portfolios (artisan_id, image) VALUES (?,?)", (id, pf))
+                photo_url = upload_image(photo)
+                db_execute(conn, "INSERT INTO portfolios (artisan_id, image) VALUES (?,?)", (id, photo_url))
 
         conn.commit()
         conn.close()

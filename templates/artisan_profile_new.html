@@ -408,7 +408,7 @@
         <img src="/static/logo.jpeg" class="logo-img" alt="Logo">
         <div class="divider-line"></div>
         {% if artisan.image %}
-            <img src="{{ url_for('static', filename='uploads/' + artisan.image) }}" class="profile-avatar" alt="{{ artisan.name }}">
+            <img src="{{ artisan.image if artisan.image.startswith('http') else url_for('static', filename='uploads/' + artisan.image) }}" class="profile-avatar" alt="{{ artisan.name }}">
         {% else %}
             <div class="avatar-placeholder"><i class="fa-solid fa-user"></i></div>
         {% endif %}
@@ -615,7 +615,7 @@
         <div class="section-title"><i class="fa-solid fa-images"></i> Portfolio</div>
         <div class="portfolio-grid">
             {% for photo in portfolio %}
-                <img src="{{ url_for('static', filename='uploads/' + photo.image) }}" class="portfolio-img" alt="Work photo">
+                <img src="{{ photo.image if photo.image.startswith('http') else url_for('static', filename='uploads/' + photo.image) }}" class="portfolio-img" alt="Work photo">
             {% endfor %}
         </div>
     </div>

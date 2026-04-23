@@ -290,7 +290,7 @@
         <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:10px;">Profile Picture</label>
         {% if artisan.image %}
         <div class="current-pic">
-            <img src="/static/uploads/{{ artisan.image }}" alt="Current profile pic">
+            <img src="{{ artisan.image if artisan.image.startswith('http') else '/static/uploads/' + artisan.image }}" alt="Current profile pic">
             <span>Current profile picture — upload a new one below to replace it</span>
         </div>
         {% endif %}
@@ -305,7 +305,7 @@
         <div class="portfolio-grid">
             {% for photo in portfolio %}
             <div class="portfolio-item">
-                <img src="/static/uploads/{{ photo.image }}" alt="Portfolio photo">
+                <img src="{{ photo.image if photo.image.startswith('http') else '/static/uploads/' + photo.image }}" alt="Portfolio photo">
                 <form method="POST" action="/artisan/{{ artisan.id }}/delete-photo/{{ photo.id }}" style="display:inline;" onsubmit="return confirm('Remove this photo?')">
                     <button type="submit" class="delete-photo-btn" title="Remove photo"><i class="fa-solid fa-xmark"></i></button>
                 </form>
