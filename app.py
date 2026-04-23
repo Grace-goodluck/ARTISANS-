@@ -536,7 +536,8 @@ def forgot_password():
 
 @app.errorhandler(500)
 def internal_error(e):
-    return render_template('500.html'), 500
+    import traceback
+    return f"<pre style='padding:20px;background:#111;color:#f88'>{traceback.format_exc()}</pre>", 500
 
 @app.errorhandler(404)
 def not_found(e):
