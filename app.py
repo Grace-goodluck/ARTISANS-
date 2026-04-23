@@ -18,7 +18,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "mysecretkey")
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", "dcalqyzvn"),
     api_key=os.environ.get("CLOUDINARY_API_KEY", "633257313267431"),
-    api_secret=os.environ.get("CLOUDINARY_API_SECRET", "liNm4wZs9rS7S714szeegemFfw"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET", "li1Nm4wZs9rS7S7I4szeegemFfw"),
     secure=True
 )
 
@@ -536,8 +536,7 @@ def forgot_password():
 
 @app.errorhandler(500)
 def internal_error(e):
-    import traceback
-    return f"<pre style='padding:20px;background:#111;color:#f88'>{traceback.format_exc()}</pre>", 500
+    return render_template('500.html'), 500
 
 @app.errorhandler(404)
 def not_found(e):
