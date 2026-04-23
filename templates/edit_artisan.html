@@ -134,7 +134,7 @@
 </div>
 
 <div class="form-wrap">
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" novalidate>
 
     <!-- PERSONAL INFO -->
     <div class="section-block">
@@ -306,9 +306,10 @@
             {% for photo in portfolio %}
             <div class="portfolio-item">
                 <img src="{{ photo.image if photo.image.startswith('http') else '/static/uploads/' + photo.image }}" alt="Portfolio photo">
-                <form method="POST" action="/artisan/{{ artisan.id }}/delete-photo/{{ photo.id }}" style="display:inline;" onsubmit="return confirm('Remove this photo?')">
-                    <button type="submit" class="delete-photo-btn" title="Remove photo"><i class="fa-solid fa-xmark"></i></button>
-                </form>
+                <button type="button" class="delete-photo-btn" title="Remove photo"
+                    onclick="if(confirm('Remove this photo?')) document.getElementById('del-{{ photo.id }}').submit()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
             {% endfor %}
         </div>
@@ -328,6 +329,11 @@
     </div>
 
 </form>
+
+{% for photo in portfolio %}
+<form id="del-{{ photo.id }}" method="POST" action="/artisan/{{ artisan.id }}/delete-photo/{{ photo.id }}" style="display:none;"></form>
+{% endfor %}
+
 </div>
 
 </body>
