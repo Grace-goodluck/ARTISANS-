@@ -163,6 +163,23 @@ def create_table():
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
+@app.route("/debug-info")
+def debug_info():
+    info = {"DATABASE_URL_set": bool(DATABASE_URL)}
+    try:
+        import pg8000.dbapi
+        info["pg8000"] = "imported ok"
+    except Exception as e:
+        info["pg8000"] = f"IMPORT ERROR: {e}"
+    try:
+        conn = get_db_connection()
+        conn.close()
+        info["db_connect"] = "ok"
+    except Exception as e:
+        info["db_connect"] = f"FAILED: {e}"
+    return info
+
+
 @app.route("/sw.js")
 def service_worker():
     response = make_response(app.send_static_file("sw.js"))
