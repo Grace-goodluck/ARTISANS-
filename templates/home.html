@@ -348,13 +348,13 @@
         <span></span><span></span><span></span>
     </button>
     <div class="nav-links" id="nav-links">
-        <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+        <a href="/artisans"><i class="fa-solid fa-magnifying-glass"></i> Find a Professional</a>
         {% if session.user_id %}
             <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
             <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
             <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
             <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
-            <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+            <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> List Your Service</a>
             <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         {% else %}
             <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
@@ -366,42 +366,42 @@
 
 <!-- STATS BAR -->
 <div class="stats-bar">
-    <div class="stat-item"><div class="num">{{ artisan_count }}+</div><div class="lbl">Artisans Registered</div></div>
-    <div class="stat-item"><div class="num">{{ skill_count }}+</div><div class="lbl">Skills Available</div></div>
+    <div class="stat-item"><div class="num">{{ artisan_count }}+</div><div class="lbl">Professionals Listed</div></div>
+    <div class="stat-item"><div class="num">{{ skill_count }}+</div><div class="lbl">Service Types</div></div>
     <div class="stat-item"><div class="num">36</div><div class="lbl">States Covered</div></div>
     <div class="stat-item"><div class="num">100%</div><div class="lbl">Free to Use</div></div>
 </div>
 
 <!-- HERO -->
 <div class="hero">
-    <h1>Find Skilled <span>Artisans</span><br>Near You</h1>
-    <p>Connect with trusted, verified artisans for all your everyday needs. From plumbing to fashion design, everything is in one place.</p>
+    <h1>Find Any Skilled <span>Professional</span><br>Near You</h1>
+    <p>From plumbers and tailors to developers, nurses, tutors, photographers and more — if the service comes to you, you'll find it here.</p>
     {% if artisan_count > 0 %}
     <div style="display:inline-block;background:rgba(196,155,58,0.15);border:1px solid rgba(196,155,58,0.35);border-radius:30px;padding:8px 22px;font-size:15px;color:#c49b3a;font-weight:700;margin-bottom:24px;">
-        <i class="fa-solid fa-users"></i> {{ artisan_count }}+ Artisans Registered
+        <i class="fa-solid fa-users"></i> {{ artisan_count }}+ Professionals Listed
     </div>
     {% endif %}
     <div class="hero-btns">
-        <a href="/artisans" class="btn-gold"><i class="fa-solid fa-magnifying-glass"></i> Find an Artisan</a>
-        <a href="/add-artisan" class="btn-outline"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        <a href="/artisans" class="btn-gold"><i class="fa-solid fa-magnifying-glass"></i> Find a Professional</a>
+        <a href="/add-artisan" class="btn-outline"><i class="fa-solid fa-plus"></i> List Your Service</a>
     </div>
 </div>
 
 <!-- ABOUT THE PLATFORM -->
 <div class="section">
     <h2 class="section-title">What is Artisaan's Crib?</h2>
-    <p class="section-sub">A dedicated platform built to bridge the gap between skilled artisans and the people who need them, right across Nigeria.</p>
+    <p class="section-sub">Nigeria's open platform for every mobile, skilled professional — from trades and tech to health, education, creative arts, and beyond.</p>
 
     <div class="about-grid">
         <div class="about-card">
             <i class="fa-solid fa-bullseye"></i>
             <h3>Our Mission</h3>
-            <p>To make it effortless for everyday Nigerians to find dependable, skilled artisans in their area without the usual stress of word of mouth or trial and error.</p>
+            <p>To make it effortless for every Nigerian to find, verify, and hire any skilled professional — in any field — without the stress of word of mouth or trial and error.</p>
         </div>
         <div class="about-card">
             <i class="fa-solid fa-eye"></i>
             <h3>Our Vision</h3>
-            <p>To become Nigeria's most trusted directory of skilled tradespeople, empowering artisans to grow their business and clients to find quality service with confidence.</p>
+            <p>To become Nigeria's most trusted directory of mobile service professionals, spanning every industry and skill — giving every expert the visibility they deserve.</p>
         </div>
         <div class="about-card">
             <i class="fa-solid fa-handshake"></i>
@@ -510,8 +510,8 @@
 <!-- BROWSE BY CATEGORY -->
 {% if categories %}
 <div class="section">
-    <h2 class="section-title">Browse by Skill</h2>
-    <p class="section-sub">Tap a category to find artisans with that skill.</p>
+    <h2 class="section-title">Browse by Service</h2>
+    <p class="section-sub">Tap a category to find professionals offering that service.</p>
     <div class="categories-wrap">
         {% for cat in categories %}
         <a href="/artisans?search={{ cat.skill }}" class="cat-pill"><i class="fa-solid fa-hammer"></i> {{ cat.skill }}</a>
@@ -552,9 +552,9 @@
 
 <!-- CTA BANNER -->
 <div class="cta-banner">
-    <h2>Are You a Skilled Artisan?</h2>
-    <p>Join the platform and start getting discovered by clients looking for exactly what you do.</p>
-    <a href="/add-artisan" class="btn-gold"><i class="fa-solid fa-pen-to-square"></i> Register Your Profile Now</a>
+    <h2>Do You Offer a Mobile Service?</h2>
+    <p>Whether you're a developer, nurse, tailor, photographer, tutor or mechanic — list your service free and start getting discovered by clients today.</p>
+    <a href="/add-artisan" class="btn-gold"><i class="fa-solid fa-pen-to-square"></i> List Your Service Now</a>
 </div>
 
 <footer>

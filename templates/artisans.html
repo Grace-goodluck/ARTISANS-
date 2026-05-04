@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find Skilled Artisans in Nigeria — Artisaan's Crib</title>
-    <meta name="description" content="Find and hire skilled artisans in Nigeria. Search tailors, plumbers, carpenters, electricians and more on Artisaan's Crib.">
-    <meta property="og:title" content="Find Skilled Artisans in Nigeria — Artisaan's Crib">
-    <meta property="og:description" content="Hire skilled artisans near you. Tailors, plumbers, electricians and more.">
+    <title>Find Skilled Professionals in Nigeria — Artisaan's Crib</title>
+    <meta name="description" content="Find and hire skilled professionals in Nigeria — tailors, developers, nurses, plumbers, tutors, photographers and more on Artisaan's Crib.">
+    <meta property="og:title" content="Find Skilled Professionals in Nigeria — Artisaan's Crib">
+    <meta property="og:description" content="Hire any mobile service professional near you. Tech, health, trades, creative and more.">
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#022f05">
     <link rel="manifest" href="/static/manifest.json">
@@ -106,13 +106,13 @@
         <span></span><span></span><span></span>
     </button>
     <div class="nav-links" id="nav-links">
-        <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+        <a href="/artisans"><i class="fa-solid fa-magnifying-glass"></i> Find a Professional</a>
         {% if session.user_id %}
             <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
             <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
             <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
             <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
-            <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+            <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> List Your Service</a>
             <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         {% else %}
             <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
@@ -122,17 +122,17 @@
 </nav>
 
 <div class="page-header">
-    <h1>Find <span>Skilled Artisans</span></h1>
-    <p>Search by skill, name, or location across Nigeria</p>
+    <h1>Find Any <span>Skilled Professional</span></h1>
+    <p>Search by service, name, or location — trades, tech, health, creative and more</p>
 </div>
 
 <div class="search-wrap">
     <form method="GET" class="search-form" autocomplete="off">
-        <input type="text" name="search" id="search-input" placeholder="e.g. Tailor, Plumber, Lagos..." value="{{ search }}" oninput="fetchSuggestions(this.value)">
+        <input type="text" name="search" id="search-input" placeholder="e.g. Developer, Nurse, Tailor, Lagos..." value="{{ search }}" oninput="fetchSuggestions(this.value)">
         <button type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
     </form>
     <div id="suggestions-box" class="suggestions-box" style="display:none;"></div>
-    <p class="search-hint">Search by skill, artisan name, or location</p>
+    <p class="search-hint">Search by service, professional name, or location</p>
     {% if states %}
     <div class="filter-row">
         <form method="GET" style="display:contents;">
