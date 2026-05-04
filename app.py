@@ -5,7 +5,7 @@ import urllib.parse
 import bcrypt
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, render_template, request, redirect, url_for, session, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, make_response, jsonify
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
@@ -134,6 +134,14 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def profile_completion(artisan):
+    fields = ['name','email','skill','location','phone','description',
+              'image','experience','certifications','availability',
+              'price_range','service_area','whatsapp']
+    filled = sum(1 for f in fields if artisan.get(f))
+    return int(filled * 100 / len(fields))
+
+
 def is_admin():
     if 'user_id' not in session:
         return False
@@ -237,6 +245,7 @@ def create_table():
         ("verified", "INTEGER DEFAULT 0"),
         ("user_id", "INTEGER"),
         ("view_count", "INTEGER DEFAULT 0"),
+        ("is_available", "INTEGER DEFAULT 1"),
     ]:
         try:
             db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
@@ -291,25 +300,26 @@ def home():
     conn = get_db_connection()
     count = db_execute(conn, "SELECT COUNT(*) as c FROM artisans WHERE name IS NOT NULL AND name != ''").fetchone()
     artisan_count = count['c'] if count else 0
-    recent = db_execute(conn, "SELECT * FROM artisans WHERE name IS NOT NULL AND name != '' ORDER BY id DESC LIMIT 4").fetchall()
     categories = db_execute(conn, "SELECT DISTINCT skill FROM artisans WHERE skill IS NOT NULL AND skill != '' ORDER BY skill LIMIT 16").fetchall()
+    skill_count = db_execute(conn, "SELECT COUNT(DISTINCT skill) as c FROM artisans WHERE skill IS NOT NULL AND skill != ''").fetchone()['c']
+    testimonials = db_execute(conn, """
+        SELECT r.rating, r.comment, a.name as artisan_name, a.skill as artisan_skill, a.image as artisan_image
+        FROM reviews r JOIN artisans a ON a.id = r.artisan_id
+        WHERE r.rating >= 4 AND r.comment IS NOT NULL AND r.comment != ''
+        ORDER BY r.rating DESC, r.id DESC LIMIT 3
+    """).fetchall()
     conn.close()
-    return render_template("home.html", artisan_count=artisan_count, recent_artisans=recent, categories=categories)
+    return render_template("home.html", artisan_count=artisan_count, categories=categories,
+                           skill_count=skill_count, testimonials=testimonials)
 
 
 @app.route("/artisans")
 def artisans():
-    search = request.args.get('search', '').strip()
-    sort   = request.args.get('sort', 'newest')
-    page   = max(1, int(request.args.get('page', 1)))
-    per_page = 12
-
-    sort_map = {
-        'newest':  'a.id DESC',
-        'rating':  'avg_rating DESC',
-        'views':   'a.view_count DESC',
-    }
-    order = sort_map.get(sort, 'a.id DESC')
+    search          = request.args.get('search', '').strip()
+    sort            = request.args.get('sort', 'newest')
+    location_filter = request.args.get('location', '').strip()
+    page            = max(1, int(request.args.get('page', 1)))
+    per_page        = 12
 
     conn = get_db_connection()
     rating_sql = """
@@ -318,31 +328,50 @@ def artisans():
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
         FROM artisans a
     """
-    base_where = " WHERE a.name IS NOT NULL AND a.name != ''"
-    if search:
-        op = "ILIKE" if DATABASE_URL else "LIKE"
-        like = '%' + search + '%'
-        where = f" WHERE (a.skill {op} ? OR a.location {op} ? OR a.name {op} ?) AND a.name IS NOT NULL AND a.name != ''"
-        all_rows = db_execute(conn, rating_sql + where, (like, like, like)).fetchall()
-    else:
-        all_rows = db_execute(conn, rating_sql + base_where).fetchall()
+    op = "ILIKE" if DATABASE_URL else "LIKE"
+    conditions = ["a.name IS NOT NULL", "a.name != ''"]
+    params = []
 
-    # sort in Python (works for both SQLite and PostgreSQL without complex SQL)
+    if search:
+        like = '%' + search + '%'
+        conditions.append(f"(a.skill {op} ? OR a.location {op} ? OR a.name {op} ?)")
+        params.extend([like, like, like])
+
+    if location_filter:
+        conditions.append(f"a.location {op} ?")
+        params.append('%' + location_filter + '%')
+
+    where = " WHERE " + " AND ".join(conditions)
+    all_rows = db_execute(conn, rating_sql + where, tuple(params)).fetchall()
+
+    # featured (verified) artisans float to top, then sort within groups
     if sort == 'rating':
-        all_rows = sorted(all_rows, key=lambda r: float(r['avg_rating'] or 0), reverse=True)
+        key_fn = lambda r: float(r['avg_rating'] or 0)
     elif sort == 'views':
-        all_rows = sorted(all_rows, key=lambda r: int(r['view_count'] or 0), reverse=True)
+        key_fn = lambda r: int(r['view_count'] or 0)
     else:
-        all_rows = sorted(all_rows, key=lambda r: int(r['id']), reverse=True)
+        key_fn = lambda r: int(r['id'])
+
+    featured = sorted([r for r in all_rows if r.get('verified')], key=key_fn, reverse=True)
+    regular  = sorted([r for r in all_rows if not r.get('verified')], key=key_fn, reverse=True)
+    all_rows = featured + regular
 
     total = len(all_rows)
     total_pages = max(1, (total + per_page - 1) // per_page)
     page = min(page, total_pages)
     rows = all_rows[(page-1)*per_page : page*per_page]
 
+    # distinct states for location filter dropdown
+    loc_rows = db_execute(conn, "SELECT DISTINCT location FROM artisans WHERE location IS NOT NULL AND location != ''").fetchall()
+    states = sorted(set(
+        r['location'].split(',')[-1].strip() for r in loc_rows
+        if r['location'] and ',' in r['location']
+    ))
+
     conn.close()
     return render_template("artisans.html", artisans=rows, search=search, sort=sort,
-                           page=page, total_pages=total_pages, total=total)
+                           page=page, total_pages=total_pages, total=total,
+                           location_filter=location_filter, states=states)
 
 
 @app.route("/add-artisan", methods=["GET", "POST"])
@@ -539,11 +568,56 @@ def artisan_profile(id):
     review_count   = len(reviews)
     average_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
     contacted = request.args.get('contacted') == '1'
+    completion = profile_completion(artisan)
+    related = db_execute(conn, """
+        SELECT id, name, skill, location, image, is_available FROM artisans
+        WHERE skill=? AND id!=? AND name IS NOT NULL AND name != '' LIMIT 3
+    """, (artisan['skill'], id)).fetchall()
 
     return render_template('artisan_profile_new.html',
         artisan=artisan, reviews=reviews,
         average_rating=average_rating, review_count=review_count,
-        portfolio=portfolio, is_bookmarked=is_bookmarked, contacted=contacted)
+        portfolio=portfolio, is_bookmarked=is_bookmarked, contacted=contacted,
+        completion=completion, related=related)
+
+
+@app.route('/api/suggestions')
+def suggestions():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    conn = get_db_connection()
+    op = "ILIKE" if DATABASE_URL else "LIKE"
+    like = '%' + q + '%'
+    skills = db_execute(conn, f"SELECT DISTINCT skill FROM artisans WHERE skill {op} ? LIMIT 5", (like,)).fetchall()
+    names  = db_execute(conn, f"SELECT DISTINCT name  FROM artisans WHERE name  {op} ? LIMIT 3", (like,)).fetchall()
+    locs   = db_execute(conn, f"SELECT DISTINCT location FROM artisans WHERE location {op} ? LIMIT 3", (like,)).fetchall()
+    conn.close()
+    results = list({r['skill'] for r in skills} | {r['name'] for r in names} | {r['location'] for r in locs if r['location']})[:8]
+    return jsonify(sorted(results))
+
+
+@app.route('/artisan/<int:id>/toggle-availability', methods=['POST'])
+def toggle_availability(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT is_available, user_id FROM artisans WHERE id=?", (id,)).fetchone()
+    if a and a['user_id'] == session['user_id']:
+        db_execute(conn, "UPDATE artisans SET is_available=? WHERE id=?", (0 if a['is_available'] else 1, id))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id))
+
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
 
 
 @app.route('/notifications')

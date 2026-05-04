@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us — Artisaan's Crib</title>
+    <meta name="description" content="Learn about Artisaan's Crib — Nigeria's marketplace for skilled artisans.">
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 24px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 200; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+        .hamburger span { display: block; width: 24px; height: 2px; background: #fff8dc; border-radius: 2px; }
+        .nav-links { display: flex; align-items: center; gap: 24px; }
+        @media(max-width: 768px) {
+            nav { padding: 14px 16px; }
+            .hamburger { display: flex; }
+            .nav-links { display: none; flex-direction: column; align-items: flex-start; gap: 0; position: absolute; top: 100%; left: 0; right: 0; background: #022f05; border-bottom: 2px solid #c49b3a; padding: 12px 20px 20px; z-index: 200; }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 10px 0; width: 100%; border-bottom: 1px solid rgba(196,155,58,0.1); }
+            .nav-links a:last-child { border-bottom: none; }
+        }
+
+        .hero-strip { background: linear-gradient(135deg, #011a02, #022f05); padding: 64px 40px; text-align: center; border-bottom: 1px solid rgba(196,155,58,0.2); }
+        .hero-strip h1 { font-size: 40px; font-weight: 900; color: #fff8dc; margin-bottom: 14px; }
+        .hero-strip h1 span { color: #c49b3a; }
+        .hero-strip p { font-size: 17px; color: rgba(255,248,220,0.65); max-width: 560px; margin: 0 auto; line-height: 1.7; }
+
+        .wrap { max-width: 800px; margin: 0 auto; padding: 56px 24px 80px; }
+        .section { margin-bottom: 48px; }
+        .section h2 { font-size: 22px; font-weight: 800; color: #c49b3a; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+        .section p { font-size: 15px; color: rgba(255,248,220,0.75); line-height: 1.85; margin-bottom: 12px; }
+
+        .values-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 8px; }
+        .value-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 14px; padding: 20px; text-align: center; }
+        .value-card i { font-size: 28px; color: #c49b3a; margin-bottom: 10px; }
+        .value-card h4 { font-size: 14px; font-weight: 800; color: #fff8dc; margin-bottom: 6px; }
+        .value-card p { font-size: 13px; color: rgba(255,248,220,0.55); }
+
+        .team-note { background: rgba(196,155,58,0.08); border: 1px solid rgba(196,155,58,0.2); border-radius: 14px; padding: 24px; margin-top: 8px; }
+        .contact-link { color: #c49b3a; text-decoration: none; font-weight: 700; }
+        .contact-link:hover { text-decoration: underline; }
+
+        footer { background: #011a02; border-top: 1px solid rgba(196,155,58,0.12); padding: 24px; text-align: center; color: rgba(255,248,220,0.3); font-size: 13px; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <button class="hamburger" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+        <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+        <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
+        <a href="/terms"><i class="fa-solid fa-file-lines"></i> Terms</a>
+        {% if session.user_id %}
+            <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+            <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        {% else %}
+            <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+            <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="hero-strip">
+    <h1>About <span>Artisaan's Crib</span></h1>
+    <p>Nigeria's dedicated marketplace connecting skilled artisans with clients who need them — fast, free, and direct.</p>
+</div>
+
+<div class="wrap">
+    <div class="section">
+        <h2><i class="fa-solid fa-bullseye"></i> Our Mission</h2>
+        <p>Artisaan's Crib was built to solve a simple but frustrating problem: finding a reliable skilled artisan in Nigeria is hard. Word of mouth is unreliable, phone book directories are outdated, and social media makes it difficult to verify who you're hiring.</p>
+        <p>Our mission is to make it effortless for everyday Nigerians to discover, contact, and hire verified skilled artisans — from tailors and carpenters to plumbers, electricians, makeup artists, and more — all in one trusted place.</p>
+    </div>
+
+    <div class="section">
+        <h2><i class="fa-solid fa-eye"></i> Our Vision</h2>
+        <p>To become Nigeria's most trusted directory of skilled tradespeople, empowering artisans to grow their business through digital visibility, and giving clients the confidence to hire quality service without risk or guesswork.</p>
+    </div>
+
+    <div class="section">
+        <h2><i class="fa-solid fa-gem"></i> Our Values</h2>
+        <div class="values-grid">
+            <div class="value-card"><i class="fa-solid fa-shield-halved"></i><h4>Trust</h4><p>Every artisan registers with real details. Reviews from real clients keep everyone accountable.</p></div>
+            <div class="value-card"><i class="fa-solid fa-handshake"></i><h4>Fairness</h4><p>No commissions, no hidden fees. Artisans keep everything they earn.</p></div>
+            <div class="value-card"><i class="fa-solid fa-bolt"></i><h4>Speed</h4><p>Find and contact an artisan in minutes. No waiting, no middlemen.</p></div>
+            <div class="value-card"><i class="fa-solid fa-heart"></i><h4>Community</h4><p>We exist to uplift skilled workers and make Nigerian craftsmanship more visible.</p></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2><i class="fa-solid fa-envelope"></i> Contact Us</h2>
+        <div class="team-note">
+            <p>Have a question, complaint, or suggestion? We'd love to hear from you.</p>
+            <p style="margin-top:10px;">Email us at <a href="mailto:goodluckgrace08@gmail.com" class="contact-link">goodluckgrace08@gmail.com</a> and we'll get back to you as soon as possible.</p>
+        </div>
+    </div>
+</div>
+
+<footer>&copy; 2026 Artisaan's Crib. All rights reserved. &nbsp;·&nbsp; <a href="/terms" style="color:rgba(255,248,220,0.4);text-decoration:none;">Terms &amp; Privacy</a></footer>
+</body>
+</html>

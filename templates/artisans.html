@@ -48,6 +48,18 @@
         .search-form button { background: #c49b3a; color: #022f05; border: none; border-radius: 40px; padding: 10px 22px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
         .search-form button:hover { background: #e0b84a; }
         .search-hint { text-align: center; font-size: 13px; color: rgba(255,248,220,0.4); margin-top: 10px; }
+        .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: #022f05; border: 1px solid rgba(196,155,58,0.3); border-radius: 12px; margin-top: 6px; overflow: hidden; z-index: 100; }
+        .suggestion-item { padding: 10px 20px; cursor: pointer; font-size: 14px; color: #fff8dc; transition: background 0.15s; }
+        .suggestion-item:hover { background: rgba(196,155,58,0.15); }
+        .search-wrap { position: relative; }
+        .filter-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+        .filter-select { background: rgba(255,255,255,0.07); border: 1px solid rgba(196,155,58,0.3); color: #fff8dc; border-radius: 25px; padding: 9px 16px; font-size: 14px; outline: none; cursor: pointer; }
+        .filter-select option { background: #022f05; }
+        .badge-featured { display: inline-flex; align-items: center; gap: 4px; background: rgba(196,155,58,0.25); color: #c49b3a; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-available { display: inline-flex; align-items: center; gap-4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 12px; }
+        .badge-available.yes { background: rgba(34,180,34,0.15); color: #66dd66; }
+        .badge-available.no  { background: rgba(200,50,50,0.15); color: #ff7777; }
+        .card-price { font-size: 12px; color: rgba(255,248,220,0.5); display: flex; align-items: center; gap: 4px; }
 
         .grid-wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px 60px; }
         .artisan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; }
@@ -115,12 +127,55 @@
 </div>
 
 <div class="search-wrap">
-    <form method="GET" class="search-form">
-        <input type="text" name="search" placeholder="e.g. Tailor, Plumber, Lagos..." value="{{ search }}">
+    <form method="GET" class="search-form" autocomplete="off">
+        <input type="text" name="search" id="search-input" placeholder="e.g. Tailor, Plumber, Lagos..." value="{{ search }}" oninput="fetchSuggestions(this.value)">
         <button type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
     </form>
+    <div id="suggestions-box" class="suggestions-box" style="display:none;"></div>
     <p class="search-hint">Search by skill, artisan name, or location</p>
+    {% if states %}
+    <div class="filter-row">
+        <form method="GET" style="display:contents;">
+            <input type="hidden" name="search" value="{{ search }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <select name="location" class="filter-select" onchange="this.form.submit()">
+                <option value="">All States</option>
+                {% for state in states %}
+                <option value="{{ state }}" {% if location_filter == state %}selected{% endif %}>{{ state }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+var suggestTimeout;
+function fetchSuggestions(val) {
+    clearTimeout(suggestTimeout);
+    var box = document.getElementById('suggestions-box');
+    if (val.length < 2) { box.style.display = 'none'; return; }
+    suggestTimeout = setTimeout(function() {
+        fetch('/api/suggestions?q=' + encodeURIComponent(val))
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            if (!data.length) { box.style.display = 'none'; return; }
+            box.innerHTML = data.map(function(s) {
+                return '<div class="suggestion-item" onclick="selectSuggestion(\'' + s.replace(/'/g,"&#39;") + '\')">' + s + '</div>';
+            }).join('');
+            box.style.display = 'block';
+        });
+    }, 200);
+}
+function selectSuggestion(val) {
+    document.getElementById('search-input').value = val;
+    document.getElementById('suggestions-box').style.display = 'none';
+    document.querySelector('.search-form').submit();
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.search-wrap')) document.getElementById('suggestions-box').style.display = 'none';
+});
+</script>
 
 <div class="grid-wrap">
     {% if artisans or search %}
@@ -146,10 +201,19 @@
                 <div class="card-img-placeholder"><i class="fa-solid fa-user"></i></div>
             {% endif %}
             <div class="card-body">
-                <div class="card-name">{{ artisan.name }}</div>
-                <div class="card-skill"><i class="fa-solid fa-hammer"></i> {{ artisan.skill }}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                    <div class="card-name">{{ artisan.name }}</div>
+                    {% if artisan.verified %}<span class="badge-featured"><i class="fa-solid fa-circle-check"></i> Featured</span>{% endif %}
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                    <div class="card-skill"><i class="fa-solid fa-hammer"></i> {{ artisan.skill }}</div>
+                    {% if artisan.is_available %}<span class="badge-available yes"><i class="fa-solid fa-circle" style="font-size:7px;"></i> Available</span>{% else %}<span class="badge-available no"><i class="fa-solid fa-circle" style="font-size:7px;"></i> Busy</span>{% endif %}
+                </div>
                 {% if artisan.location %}
                 <div class="card-location"><i class="fa-solid fa-location-dot"></i> {{ artisan.location }}</div>
+                {% endif %}
+                {% if artisan.price_range %}
+                <div class="card-price"><i class="fa-solid fa-naira-sign"></i> {{ artisan.price_range }}</div>
                 {% endif %}
                 <div class="card-stars">
                     {% set avg = artisan.avg_rating|float %}

@@ -181,6 +181,24 @@
             margin-left: 4px;
         }
 
+        .avail-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-top: 8px; }
+        .avail-badge.yes { background: rgba(34,180,34,0.15); color: #66dd66; border: 1px solid rgba(34,180,34,0.3); }
+        .avail-badge.no  { background: rgba(200,50,50,0.15);  color: #ff7777; border: 1px solid rgba(200,50,50,0.3); }
+
+        .completion-wrap { margin-top: 12px; }
+        .completion-label { font-size: 12px; color: rgba(255,248,220,0.5); margin-bottom: 5px; }
+        .completion-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
+        .completion-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, #c49b3a, #e0b84a); transition: width 0.6s ease; }
+
+        .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 4px; }
+        .related-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(196,155,58,0.15); border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; transition: transform 0.2s, border-color 0.2s; display: flex; flex-direction: column; }
+        .related-card:hover { transform: translateY(-3px); border-color: rgba(196,155,58,0.4); }
+        .related-img { width: 100%; height: 110px; object-fit: cover; }
+        .related-ph { width: 100%; height: 110px; background: rgba(196,155,58,0.08); display: flex; align-items: center; justify-content: center; font-size: 32px; color: rgba(196,155,58,0.3); }
+        .related-body { padding: 12px 14px; }
+        .related-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+        .related-loc { font-size: 12px; color: rgba(255,248,220,0.5); }
+
         /* CONTACT BUTTONS */
         .contact-row {
             display: flex;
@@ -452,6 +470,17 @@
             {% endif %}
             <span title="Profile views"><i class="fa-solid fa-eye"></i> {{ artisan.view_count or 0 }} view{{ 's' if (artisan.view_count or 0) != 1 }}</span>
         </div>
+        {% if artisan.is_available %}
+            <span class="avail-badge yes"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Available for hire</span>
+        {% else %}
+            <span class="avail-badge no"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Currently busy</span>
+        {% endif %}
+        {% if session.user_id == artisan.user_id %}
+        <div class="completion-wrap">
+            <div class="completion-label">Profile completion: {{ completion }}%</div>
+            <div class="completion-bar"><div class="completion-fill" style="width:{{ completion }}%;"></div></div>
+        </div>
+        {% endif %}
         <div class="star-row">
             {% set full_stars = average_rating|int %}
             {% set half_star = 1 if (average_rating - full_stars >= 0.5) else 0 %}
@@ -486,6 +515,13 @@
             <i class="fa-{% if is_bookmarked %}solid{% else %}regular{% endif %} fa-heart"></i> {% if is_bookmarked %}Saved{% else %}Save{% endif %}
         </button>
     </form>
+    {% if session.user_id == artisan.user_id %}
+    <form method="POST" action="/artisan/{{ artisan.id }}/toggle-availability" style="display:inline;">
+        <button type="submit" class="cta-btn" style="background:{% if artisan.is_available %}rgba(34,180,34,0.15){% else %}rgba(200,50,50,0.15){% endif %};color:{% if artisan.is_available %}#66dd66{% else %}#ff7777{% endif %};border:1px solid rgba({% if artisan.is_available %}34,180,34{% else %}200,50,50{% endif %},0.35);cursor:pointer;">
+            <i class="fa-solid fa-toggle-{% if artisan.is_available %}on{% else %}off{% endif %}"></i> {% if artisan.is_available %}Set Busy{% else %}Set Available{% endif %}
+        </button>
+    </form>
+    {% endif %}
     {% endif %}
     <a href="tel:{{ artisan.phone }}" class="cta-btn btn-call">
         <i class="fa-solid fa-phone"></i> Call
@@ -499,8 +535,11 @@
         <i class="fa-solid fa-envelope"></i> Email
     </a>
     {% endif %}
+    <a href="https://wa.me/?text={{ (artisan.name + ' — ' + artisan.skill + ' in ' + (artisan.location or '') + '. View profile: ')|urlencode }}{{ request.url|urlencode }}" target="_blank" class="cta-btn" style="background:#25D366;color:white;">
+        <i class="fa-brands fa-whatsapp"></i> Share on WhatsApp
+    </a>
     <button onclick="shareProfile()" class="cta-btn" style="background:rgba(255,255,255,0.08);color:#fff8dc;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">
-        <i class="fa-solid fa-share-nodes"></i> Share
+        <i class="fa-solid fa-copy"></i> Copy Link
     </button>
 </div>
 
@@ -728,20 +767,39 @@
         </form>
     </div>
 
+    <!-- RELATED ARTISANS -->
+    {% if related %}
+    <div class="section-card full-width">
+        <div class="section-title"><i class="fa-solid fa-users"></i> Other {{ artisan.skill }}s You May Like</div>
+        <div class="related-grid">
+            {% for r in related %}
+            <a href="/artisan/{{ r.id }}" class="related-card">
+                {% if r.image %}
+                    <img src="{{ r.image if r.image.startswith('http') else url_for('static', filename='uploads/' + r.image) }}" class="related-img" alt="{{ r.name }}">
+                {% else %}
+                    <div class="related-ph"><i class="fa-solid fa-user"></i></div>
+                {% endif %}
+                <div class="related-body">
+                    <div class="related-name">{{ r.name }}</div>
+                    <div class="related-loc"><i class="fa-solid fa-location-dot" style="color:#c49b3a;font-size:11px;"></i> {{ r.location or 'Nigeria' }}</div>
+                    {% if r.is_available %}<span style="font-size:11px;color:#66dd66;"><i class="fa-solid fa-circle" style="font-size:7px;"></i> Available</span>{% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 
 <script>
 function shareProfile() {
-    var name = "{{ artisan.name }}";
-    var skill = "{{ artisan.skill }}";
     var url = window.location.href;
-    if (navigator.share) {
-        navigator.share({ title: name + ' — ' + skill, text: 'Check out ' + name + ' on Artisaan\'s Crib!', url: url });
-    } else {
-        navigator.clipboard.writeText(url).then(function() {
-            alert('Link copied to clipboard!');
-        });
-    }
+    navigator.clipboard.writeText(url).then(function() {
+        alert('Link copied to clipboard!');
+    }).catch(function() {
+        prompt('Copy this link:', url);
+    });
 }
 </script>
 

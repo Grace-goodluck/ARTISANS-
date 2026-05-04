@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms &amp; Privacy — Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 24px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 200; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+        .hamburger span { display: block; width: 24px; height: 2px; background: #fff8dc; border-radius: 2px; }
+        .nav-links { display: flex; align-items: center; gap: 24px; }
+        @media(max-width: 768px) {
+            nav { padding: 14px 16px; }
+            .hamburger { display: flex; }
+            .nav-links { display: none; flex-direction: column; align-items: flex-start; gap: 0; position: absolute; top: 100%; left: 0; right: 0; background: #022f05; border-bottom: 2px solid #c49b3a; padding: 12px 20px 20px; z-index: 200; }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 10px 0; width: 100%; border-bottom: 1px solid rgba(196,155,58,0.1); }
+            .nav-links a:last-child { border-bottom: none; }
+        }
+
+        .hero-strip { padding: 48px 40px 36px; text-align: center; border-bottom: 1px solid rgba(196,155,58,0.2); }
+        .hero-strip h1 { font-size: 34px; font-weight: 900; color: #fff8dc; margin-bottom: 8px; }
+        .hero-strip p { font-size: 14px; color: rgba(255,248,220,0.45); }
+
+        .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+        .section { margin-bottom: 40px; }
+        .section h2 { font-size: 18px; font-weight: 800; color: #c49b3a; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section p, .section li { font-size: 15px; color: rgba(255,248,220,0.72); line-height: 1.85; margin-bottom: 10px; }
+        .section ul { padding-left: 20px; }
+        .section ul li { margin-bottom: 6px; }
+        .divider { border: none; border-top: 1px solid rgba(196,155,58,0.15); margin: 40px 0; }
+
+        footer { background: #011a02; border-top: 1px solid rgba(196,155,58,0.12); padding: 24px; text-align: center; color: rgba(255,248,220,0.3); font-size: 13px; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <button class="hamburger" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+        <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+        <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
+        {% if session.user_id %}
+            <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+            <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        {% else %}
+            <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+            <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="hero-strip">
+    <h1><i class="fa-solid fa-file-lines" style="color:#c49b3a;"></i> Terms &amp; Privacy</h1>
+    <p>Last updated: May 2026</p>
+</div>
+
+<div class="wrap">
+    <div class="section">
+        <h2><i class="fa-solid fa-handshake"></i> Terms of Use</h2>
+        <p>By using Artisaan's Crib, you agree to the following terms. Please read them carefully.</p>
+        <ul>
+            <li>You must be at least 18 years old to register an account or artisan profile.</li>
+            <li>You are responsible for the accuracy of all information you provide — including your name, skill, location, and contact details.</li>
+            <li>Artisan profiles must represent real individuals offering genuine services. Fake or misleading profiles will be removed.</li>
+            <li>Reviews must be honest and based on real experiences. Fake reviews are strictly prohibited.</li>
+            <li>You may not use this platform to scam, defraud, or harass other users or artisans.</li>
+            <li>We reserve the right to remove any profile or account that violates these terms at any time.</li>
+        </ul>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+        <h2><i class="fa-solid fa-shield-halved"></i> Privacy Policy</h2>
+        <p>We take your privacy seriously. Here is how we handle your data:</p>
+        <ul>
+            <li><strong>Information collected:</strong> We collect your name, email address, and any profile details you choose to provide (such as phone number, location, and photos).</li>
+            <li><strong>How we use it:</strong> Your information is used solely to power your profile and help clients find and contact you. We do not sell your data to third parties.</li>
+            <li><strong>Photos:</strong> Profile and portfolio images are stored securely via Cloudinary, a trusted cloud storage provider.</li>
+            <li><strong>Passwords:</strong> Passwords are encrypted using industry-standard bcrypt hashing. We never store plain-text passwords.</li>
+            <li><strong>Cookies:</strong> We use a session cookie to keep you logged in. No third-party tracking cookies are used.</li>
+            <li><strong>Data deletion:</strong> You can delete your account and all associated data at any time from your Account Settings page.</li>
+        </ul>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+        <h2><i class="fa-solid fa-envelope"></i> Contact</h2>
+        <p>Questions about these terms or your data? Email us at <a href="mailto:goodluckgrace08@gmail.com" style="color:#c49b3a;font-weight:700;">goodluckgrace08@gmail.com</a>.</p>
+    </div>
+</div>
+
+<footer>&copy; 2026 Artisaan's Crib. All rights reserved. &nbsp;·&nbsp; <a href="/about" style="color:rgba(255,248,220,0.4);text-decoration:none;">About Us</a></footer>
+</body>
+</html>
