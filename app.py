@@ -241,6 +241,28 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS reports (
+            id {PK},
+            artisan_id INTEGER,
+            reporter_name TEXT,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS service_requests (
+            id {PK},
+            name TEXT,
+            phone TEXT,
+            skill_needed TEXT,
+            location TEXT,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     for col, definition in [
         ("verified", "INTEGER DEFAULT 0"),
         ("user_id", "INTEGER"),
@@ -264,6 +286,24 @@ def create_table():
         except Exception:
             try: conn.rollback()
             except: pass
+
+    for col, definition in [
+        ("reply", "TEXT"),
+        ("replied_at", "TIMESTAMP"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE reviews ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
+    try:
+        db_execute(conn, "ALTER TABLE artisans ADD COLUMN business_hours TEXT")
+        conn.commit()
+    except Exception:
+        try: conn.rollback()
+        except: pass
 
     conn.commit()
     conn.close()
@@ -399,8 +439,9 @@ def add_artisan():
         experience   = request.form.get("experience", "")
         certifications = request.form.get("certifications", "")
         availability = request.form.get("availability", "")
-        price_range  = request.form.get("price_range", "")
-        service_area = request.form.get("service_area", "")
+        price_range    = request.form.get("price_range", "")
+        service_area   = request.form.get("service_area", "")
+        business_hours = request.form.get("business_hours", "")
         phone        = request.form.get("phone", "")
         whatsapp     = request.form.get("whatsapp", "")
         instagram    = request.form.get("instagram", "")
@@ -425,8 +466,8 @@ def add_artisan():
             return render_template("add_artisan.html", error="An artisan with that name, skill, and phone number already exists.")
 
         artisan_id = db_insert(conn,
-            "INSERT INTO artisans (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image,user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image_url,session.get('user_id'))
+            "INSERT INTO artisans (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image,user_id,business_hours) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image_url,session.get('user_id'),business_hours)
         )
 
         for photo in request.files.getlist("portfolio")[:5]:
@@ -559,6 +600,10 @@ def artisan_profile(id):
 
     reviews   = db_execute(conn, "SELECT * FROM reviews WHERE artisan_id=? ORDER BY created_at DESC", (id,)).fetchall()
     portfolio = db_execute(conn, "SELECT image FROM portfolios WHERE artisan_id=?", (id,)).fetchall()
+    related   = db_execute(conn, """
+        SELECT id, name, skill, location, image, is_available FROM artisans
+        WHERE skill=? AND id!=? AND name IS NOT NULL AND name != '' LIMIT 3
+    """, (artisan['skill'], id)).fetchall()
     is_bookmarked = False
     if 'user_id' in session:
         bm = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
@@ -567,17 +612,15 @@ def artisan_profile(id):
 
     review_count   = len(reviews)
     average_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
-    contacted = request.args.get('contacted') == '1'
+    contacted  = request.args.get('contacted') == '1'
+    reported   = request.args.get('reported') == '1'
     completion = profile_completion(artisan)
-    related = db_execute(conn, """
-        SELECT id, name, skill, location, image, is_available FROM artisans
-        WHERE skill=? AND id!=? AND name IS NOT NULL AND name != '' LIMIT 3
-    """, (artisan['skill'], id)).fetchall()
 
     return render_template('artisan_profile_new.html',
         artisan=artisan, reviews=reviews,
         average_rating=average_rating, review_count=review_count,
-        portfolio=portfolio, is_bookmarked=is_bookmarked, contacted=contacted,
+        portfolio=portfolio, is_bookmarked=is_bookmarked,
+        contacted=contacted, reported=reported,
         completion=completion, related=related)
 
 
@@ -632,7 +675,7 @@ def notifications():
     msgs    = db_execute(conn, "SELECT * FROM messages WHERE artisan_id=? ORDER BY created_at DESC", (my_artisan['id'],)).fetchall()
     reviews = db_execute(conn, "SELECT * FROM reviews WHERE artisan_id=? ORDER BY created_at DESC", (my_artisan['id'],)).fetchall()
     conn.close()
-    return render_template('notifications.html', messages=msgs, reviews=reviews, my_artisan=my_artisan)
+    return render_template('notifications.html', messages=msgs, reviews=reviews, my_artisan=my_artisan, session=session)
 
 
 @app.route('/dashboard')
@@ -671,7 +714,7 @@ def edit_artisan(id):
         fields = ['name','email','dob','gender','languages','skill','experience',
                   'certifications','availability','price_range','service_area',
                   'phone','whatsapp','instagram','facebook','tiktok','twitter',
-                  'youtube','website','description','custom_orders']
+                  'youtube','website','description','custom_orders','business_hours']
         u = {f: request.form.get(f, '') for f in fields}
         city  = request.form.get('city', '')
         state = request.form.get('state', '')
@@ -688,12 +731,13 @@ def edit_artisan(id):
             name=?,email=?,dob=?,gender=?,languages=?,skill=?,experience=?,
             certifications=?,availability=?,price_range=?,location=?,service_area=?,
             phone=?,whatsapp=?,instagram=?,facebook=?,tiktok=?,twitter=?,
-            youtube=?,website=?,description=?,custom_orders=?,marketing=?,image=?
+            youtube=?,website=?,description=?,custom_orders=?,marketing=?,image=?,business_hours=?
             WHERE id=?''',
             (u['name'],u['email'],u['dob'],u['gender'],u['languages'],u['skill'],u['experience'],
              u['certifications'],u['availability'],u['price_range'],u['location'],u['service_area'],
              u['phone'],u['whatsapp'],u['instagram'],u['facebook'],u['tiktok'],u['twitter'],
-             u['youtube'],u['website'],u['description'],u['custom_orders'],u['marketing'],u['image'],id))
+             u['youtube'],u['website'],u['description'],u['custom_orders'],u['marketing'],u['image'],
+             u['business_hours'],id))
 
         for photo in request.files.getlist('portfolio')[:5]:
             if photo and photo.filename and allowed_file(photo.filename):
@@ -923,6 +967,107 @@ def admin_delete_user(id):
     conn.commit()
     conn.close()
     return redirect(url_for('admin_panel'))
+
+
+@app.route('/artisan/<int:id>/report', methods=['POST'])
+def report_artisan(id):
+    reporter_name = request.form.get('reporter_name', 'Anonymous').strip()
+    reason = request.form.get('reason', '').strip()
+    if reason:
+        conn = get_db_connection()
+        db_execute(conn, "INSERT INTO reports (artisan_id, reporter_name, reason) VALUES (?,?,?)",
+                   (id, reporter_name, reason))
+        conn.commit()
+        conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '?reported=1')
+
+
+@app.route('/request-service', methods=['GET', 'POST'])
+def request_service():
+    if request.method == 'POST':
+        name         = request.form.get('name', '').strip()
+        phone        = request.form.get('phone', '').strip()
+        skill_needed = request.form.get('skill_needed', '').strip()
+        location     = request.form.get('location', '').strip()
+        description  = request.form.get('description', '').strip()
+        conn = get_db_connection()
+        db_execute(conn,
+            "INSERT INTO service_requests (name, phone, skill_needed, location, description) VALUES (?,?,?,?,?)",
+            (name, phone, skill_needed, location, description))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('service_requests_list') + '?posted=1')
+    return render_template('request_service.html')
+
+
+@app.route('/requests')
+def service_requests_list():
+    conn = get_db_connection()
+    reqs = db_execute(conn, "SELECT * FROM service_requests ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return render_template('requests.html', requests=reqs, posted=request.args.get('posted'))
+
+
+@app.route('/review/<int:review_id>/reply', methods=['POST'])
+def reply_review(review_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    reply = request.form.get('reply', '').strip()
+    if reply:
+        conn = get_db_connection()
+        review = db_execute(conn,
+            "SELECT r.id, a.user_id FROM reviews r JOIN artisans a ON a.id=r.artisan_id WHERE r.id=?",
+            (review_id,)).fetchone()
+        if review and review['user_id'] == session['user_id']:
+            db_execute(conn,
+                "UPDATE reviews SET reply=?, replied_at=CURRENT_TIMESTAMP WHERE id=?",
+                (reply, review_id))
+            conn.commit()
+        conn.close()
+    return redirect(url_for('notifications'))
+
+
+@app.route('/api/artisans-by-ids')
+def artisans_by_ids():
+    ids_param = request.args.get('ids', '')
+    if not ids_param:
+        return jsonify([])
+    try:
+        ids = [int(i) for i in ids_param.split(',') if i.strip().isdigit()][:10]
+    except ValueError:
+        return jsonify([])
+    if not ids:
+        return jsonify([])
+    conn = get_db_connection()
+    placeholders = ','.join(['?' for _ in ids])
+    rows = db_execute(conn, f"SELECT id, name, skill, location, image, is_available FROM artisans WHERE id IN ({placeholders})", tuple(ids)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/admin/reports')
+def admin_reports():
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    reports = db_execute(conn, """
+        SELECT rp.*, a.name as artisan_name, a.skill as artisan_skill
+        FROM reports rp LEFT JOIN artisans a ON a.id=rp.artisan_id
+        ORDER BY rp.created_at DESC
+    """).fetchall()
+    conn.close()
+    return render_template('admin_reports.html', reports=reports)
+
+
+@app.route('/admin/delete-report/<int:report_id>', methods=['POST'])
+def delete_report(report_id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    db_execute(conn, "DELETE FROM reports WHERE id=?", (report_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_reports'))
 
 
 @app.errorhandler(500)

@@ -504,6 +504,13 @@
 <script>setTimeout(function(){var t=document.getElementById('contact-toast');if(t)t.style.display='none';},4000);</script>
 {% endif %}
 
+{% if reported %}
+<div id="report-toast" style="position:fixed;bottom:24px;right:24px;background:#444;color:#fff8dc;padding:14px 22px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <i class="fa-solid fa-flag"></i> Report submitted. Thank you for helping keep the platform safe.
+</div>
+<script>setTimeout(function(){var t=document.getElementById('report-toast');if(t)t.style.display='none';},5000);</script>
+{% endif %}
+
 <!-- CONTACT -->
 <div class="contact-row">
     {% if session.user_id %}
@@ -541,6 +548,39 @@
     <button onclick="shareProfile()" class="cta-btn" style="background:rgba(255,255,255,0.08);color:#fff8dc;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">
         <i class="fa-solid fa-copy"></i> Copy Link
     </button>
+    {% if session.user_id and session.user_id != artisan.user_id %}
+    <button onclick="document.getElementById('report-modal').style.display='flex'" class="cta-btn" style="background:rgba(200,50,50,0.12);color:#ff8888;border:1px solid rgba(200,50,50,0.3);cursor:pointer;">
+        <i class="fa-solid fa-flag"></i> Report
+    </button>
+    {% endif %}
+</div>
+
+<!-- REPORT MODAL -->
+<div id="report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#022f05;border:1px solid rgba(196,155,58,0.3);border-radius:16px;padding:32px;max-width:420px;width:100%;">
+        <h3 style="font-size:18px;color:#c49b3a;margin-bottom:16px;"><i class="fa-solid fa-flag"></i> Report This Profile</h3>
+        <form method="POST" action="/artisan/{{ artisan.id }}/report">
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Your Name (optional)</label>
+                <input type="text" name="reporter_name" placeholder="Anonymous" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:14px;outline:none;">
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="font-size:12px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Reason <span style="color:#ff6b6b;">*</span></label>
+                <select name="reason" required style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid rgba(196,155,58,0.25);background:#022f05;color:#fff8dc;font-size:14px;outline:none;">
+                    <option value="">Select a reason</option>
+                    <option value="Fake or misleading profile">Fake or misleading profile</option>
+                    <option value="Scam or fraud">Scam or fraud</option>
+                    <option value="Inappropriate content">Inappropriate content</option>
+                    <option value="Wrong contact details">Wrong contact details</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:12px;">
+                <button type="submit" style="flex:1;padding:12px;border-radius:30px;background:rgba(200,50,50,0.8);color:white;font-weight:800;font-size:14px;border:none;cursor:pointer;">Submit Report</button>
+                <button type="button" onclick="document.getElementById('report-modal').style.display='none'" style="flex:1;padding:12px;border-radius:30px;background:rgba(255,255,255,0.08);color:#fff8dc;font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- CONTENT GRID -->
@@ -630,6 +670,12 @@
         <div class="detail-row">
             <i class="fa-solid fa-map"></i>
             <div><span class="detail-label">Service Area</span><span class="detail-value">{{ artisan.service_area }}</span></div>
+        </div>
+        {% endif %}
+        {% if artisan.business_hours %}
+        <div class="detail-row">
+            <i class="fa-solid fa-clock"></i>
+            <div><span class="detail-label">Working Hours</span><span class="detail-value">{{ artisan.business_hours }}</span></div>
         </div>
         {% endif %}
     </div>
@@ -793,6 +839,18 @@
 </div>
 
 <script>
+// Track recently viewed
+(function(){
+    try {
+        var viewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        var entry = { id: {{ artisan.id }}, name: {{ artisan.name|tojson }}, skill: {{ artisan.skill|tojson }}, image: {{ (artisan.image or '')|tojson }} };
+        viewed = viewed.filter(function(v){ return v.id !== entry.id; });
+        viewed.unshift(entry);
+        if (viewed.length > 6) viewed = viewed.slice(0, 6);
+        localStorage.setItem('recentlyViewed', JSON.stringify(viewed));
+    } catch(e) {}
+})();
+
 function shareProfile() {
     var url = window.location.href;
     navigator.clipboard.writeText(url).then(function() {

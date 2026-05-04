@@ -272,6 +272,27 @@ document.addEventListener('click', function(e) {
 </div>
 
 
+<!-- RECENTLY VIEWED -->
+<div id="recently-viewed-wrap" style="display:none;max-width:1200px;margin:0 auto;padding:0 24px 40px;">
+    <h3 style="font-size:14px;font-weight:700;color:rgba(255,248,220,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;"><i class="fa-solid fa-clock-rotate-left" style="color:#c49b3a;"></i> Recently Viewed</h3>
+    <div id="recently-viewed-list" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+</div>
+<script>
+(function(){
+    try {
+        var viewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        if (!viewed.length) return;
+        var wrap = document.getElementById('recently-viewed-wrap');
+        var list = document.getElementById('recently-viewed-list');
+        viewed.forEach(function(v) {
+            var img = v.image ? '<img src="'+v.image+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #c49b3a;flex-shrink:0;">' : '<div style="width:44px;height:44px;border-radius:50%;background:rgba(196,155,58,0.15);display:flex;align-items:center;justify-content:center;color:#c49b3a;flex-shrink:0;"><i class="fa-solid fa-user"></i></div>';
+            list.innerHTML += '<a href="/artisan/'+v.id+'" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.15);border-radius:40px;padding:6px 16px 6px 6px;text-decoration:none;color:#fff8dc;font-size:13px;transition:border-color 0.2s;" onmouseover="this.style.borderColor=\'rgba(196,155,58,0.5)\'" onmouseout="this.style.borderColor=\'rgba(196,155,58,0.15)\'">'+ img +'<div><div style="font-weight:700;font-size:13px;">'+v.name+'</div><div style="font-size:11px;color:#c49b3a;">'+v.skill+'</div></div></a>';
+        });
+        wrap.style.display = 'block';
+    } catch(e) {}
+})();
+</script>
+
 <!-- MOBILE BACK BUTTON -->
 <button class="mobile-back-btn" onclick="history.back()" aria-label="Go back">
     <i class="fa-solid fa-arrow-left"></i>

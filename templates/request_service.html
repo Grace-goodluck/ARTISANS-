@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request a Service | Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 24px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 200; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s, color 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+        .hamburger span { display: block; width: 24px; height: 2px; background: #fff8dc; border-radius: 2px; }
+        .nav-links { display: flex; align-items: center; gap: 24px; }
+        @media(max-width: 768px) {
+            nav { padding: 14px 16px; gap: 12px; }
+            .hamburger { display: flex; }
+            .nav-links { display: none; flex-direction: column; align-items: flex-start; gap: 0; position: absolute; top: 100%; left: 0; right: 0; background: #022f05; border-bottom: 2px solid #c49b3a; padding: 12px 20px 20px; z-index: 200; }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 10px 0; width: 100%; border-bottom: 1px solid rgba(196,155,58,0.1); }
+            .nav-links a:last-child { border-bottom: none; }
+        }
+        .hero { text-align: center; padding: 56px 24px 40px; }
+        .hero h1 { font-size: 34px; font-weight: 900; color: #fff8dc; margin-bottom: 10px; }
+        .hero h1 span { color: #c49b3a; }
+        .hero p { color: rgba(255,248,220,0.6); font-size: 16px; max-width: 520px; margin: 0 auto; line-height: 1.7; }
+        .form-wrap { max-width: 580px; margin: 0 auto; padding: 0 24px 80px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.2); border-radius: 20px; padding: 36px; }
+        .field { margin-bottom: 18px; }
+        .field label { display: block; font-size: 12px; font-weight: 700; color: #c49b3a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 7px; }
+        .field input, .field select, .field textarea { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(196,155,58,0.25); background: rgba(255,255,255,0.07); color: #fff8dc; font-size: 15px; font-family: inherit; outline: none; transition: border 0.2s; }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: #c49b3a; }
+        .field input::placeholder, .field textarea::placeholder { color: rgba(255,248,220,0.3); }
+        .field select option { background: #022f05; }
+        .field textarea { resize: vertical; }
+        .btn { width: 100%; padding: 14px; border-radius: 30px; background: #c49b3a; color: #022f05; font-weight: 800; font-size: 16px; border: none; cursor: pointer; transition: background 0.2s; margin-top: 6px; }
+        .btn:hover { background: #e0b84a; }
+        .alt-link { text-align: center; margin-top: 20px; font-size: 14px; color: rgba(255,248,220,0.55); }
+        .alt-link a { color: #c49b3a; text-decoration: none; font-weight: 700; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <button class="hamburger" onclick="document.getElementById('nav-links').classList.toggle('open')" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+        <a href="/artisans"><i class="fa-solid fa-magnifying-glass"></i> Find a Professional</a>
+        <a href="/requests"><i class="fa-solid fa-list"></i> Browse Requests</a>
+        {% if session.user_id %}
+            <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+            <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        {% else %}
+            <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+            <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="hero">
+    <h1><i class="fa-solid fa-bullhorn" style="color:#c49b3a;"></i> Post a <span>Service Request</span></h1>
+    <p>Tell us what you need and skilled professionals near you will reach out to you directly.</p>
+</div>
+
+<div class="form-wrap">
+    <div class="card">
+        <form method="POST">
+            <div class="field">
+                <label>Your Name <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" name="name" placeholder="e.g. Emeka Okafor" required>
+            </div>
+            <div class="field">
+                <label>Phone Number <span style="color:#ff6b6b;">*</span></label>
+                <input type="tel" name="phone" placeholder="e.g. 08012345678" required>
+            </div>
+            <div class="field">
+                <label>Service Needed <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" name="skill_needed" placeholder="e.g. Plumber, Web Developer, Tailor..." required>
+            </div>
+            <div class="field">
+                <label>Your Location <span style="color:#ff6b6b;">*</span></label>
+                <input type="text" name="location" placeholder="e.g. Ikeja, Lagos" required>
+            </div>
+            <div class="field">
+                <label>Describe What You Need <span style="color:#ff6b6b;">*</span></label>
+                <textarea name="description" rows="4" placeholder="Describe your job or request in detail..." required></textarea>
+            </div>
+            <button type="submit" class="btn"><i class="fa-solid fa-paper-plane"></i> Post Request</button>
+        </form>
+    </div>
+    <div class="alt-link">
+        Want to browse instead? <a href="/artisans">Find a Professional</a> &nbsp;|&nbsp; <a href="/requests">View All Requests</a>
+    </div>
+</div>
+
+<!-- MOBILE BACK BUTTON -->
+<button class="mobile-back-btn" onclick="history.back()" aria-label="Go back">
+    <i class="fa-solid fa-arrow-left"></i>
+</button>
+<style>
+.mobile-back-btn { display: none; position: fixed; bottom: 28px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #c49b3a; color: #022f05; border: none; font-size: 20px; cursor: pointer; z-index: 1000; box-shadow: 0 4px 18px rgba(0,0,0,0.35); align-items: center; justify-content: center; transition: transform 0.2s; }
+.mobile-back-btn:hover { transform: scale(1.08); }
+@media(max-width: 768px) { .mobile-back-btn { display: flex; } }
+</style>
+</body>
+</html>

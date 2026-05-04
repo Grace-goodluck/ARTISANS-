@@ -222,6 +222,10 @@
                 <label>About / Description</label>
                 <textarea name="description" rows="4">{{ artisan.description or '' }}</textarea>
             </div>
+            <div class="field full">
+                <label>Working Hours</label>
+                <input type="text" name="business_hours" value="{{ artisan.business_hours or '' }}" placeholder="e.g. Mon to Fri, 8am to 6pm">
+            </div>
         </div>
     </div>
 

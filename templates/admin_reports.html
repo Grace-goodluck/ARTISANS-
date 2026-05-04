@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports | Admin | Artisaan's Crib</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; padding: 32px 24px; }
+        h1 { font-size: 26px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 14px; margin-bottom: 28px; }
+        .back { color: #c49b3a; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: rgba(196,155,58,0.15); color: #c49b3a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 14px; text-align: left; }
+        td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(255,248,220,0.8); vertical-align: top; }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+        .btn-del { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+        .btn-del:hover { background: rgba(200,50,50,0.4); }
+        .empty { color: rgba(255,248,220,0.4); padding: 40px; text-align: center; }
+    </style>
+</head>
+<body>
+<a href="/admin" class="back"><i class="fa-solid fa-arrow-left"></i> Back to Admin</a>
+<h1><i class="fa-solid fa-flag"></i> Profile Reports</h1>
+<p class="sub">{{ reports|length }} report{{ 's' if reports|length != 1 }} submitted by users</p>
+
+{% if reports %}
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Artisan</th>
+            <th>Reporter</th>
+            <th>Reason</th>
+            <th>Date</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in reports %}
+        <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.artisan_name or 'N/A' }}<br><small style="color:#c49b3a;">{{ r.artisan_skill or '' }}</small></td>
+            <td>{{ r.reporter_name }}</td>
+            <td>{{ r.reason }}</td>
+            <td>{{ (r.created_at or '')|string|truncate(16, true, '') }}</td>
+            <td>
+                <form method="POST" action="/admin/delete-report/{{ r.id }}" style="display:inline;">
+                    <button type="submit" class="btn-del" onclick="return confirm('Dismiss this report?')"><i class="fa-solid fa-trash"></i> Dismiss</button>
+                </form>
+                <a href="/artisan/{{ r.artisan_id }}" style="color:#c49b3a;font-size:12px;margin-left:8px;" target="_blank">View Profile</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty"><i class="fa-solid fa-check-circle" style="font-size:40px;color:rgba(196,155,58,0.3);display:block;margin-bottom:12px;"></i> No reports yet.</div>
+{% endif %}
+</body>
+</html>

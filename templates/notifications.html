@@ -36,6 +36,13 @@
         .star-row { color: #c49b3a; font-size: 14px; margin-bottom: 6px; }
         .empty { text-align: center; padding: 50px 20px; color: rgba(255,248,220,0.4); font-size: 15px; }
         .empty i { font-size: 40px; display: block; margin-bottom: 12px; color: rgba(196,155,58,0.3); }
+        .reply-box { margin-top: 12px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px 14px; border: 1px solid rgba(196,155,58,0.15); }
+        .reply-box .existing-reply { font-size: 13px; color: rgba(255,248,220,0.65); font-style: italic; margin-bottom: 8px; }
+        .reply-box textarea { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(196,155,58,0.25); border-radius: 8px; color: #fff8dc; font-size: 13px; font-family: inherit; padding: 9px 12px; resize: vertical; outline: none; }
+        .reply-box textarea:focus { border-color: #c49b3a; }
+        .reply-submit { margin-top: 8px; background: #c49b3a; color: #022f05; border: none; border-radius: 20px; padding: 7px 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .reply-submit:hover { opacity: 0.9; }
+        .reply-toggle { font-size: 12px; color: #c49b3a; cursor: pointer; margin-top: 8px; display: inline-block; text-decoration: underline; background: none; border: none; }
 
         .no-artisan { text-align: center; padding: 60px 20px; }
         .no-artisan p { color: rgba(255,248,220,0.5); margin-bottom: 18px; }
@@ -95,6 +102,18 @@
                     {% for i in range(5 - r.rating) %}<i class="fa-regular fa-star"></i>{% endfor %}
                 </div>
                 <div class="notif-msg">{{ r.comment }}</div>
+                <div class="reply-box">
+                    {% if r.reply %}
+                    <div class="existing-reply"><i class="fa-solid fa-reply" style="color:#c49b3a;"></i> Your reply: {{ r.reply }}</div>
+                    <button class="reply-toggle" onclick="toggleReply('reply-form-{{ r.id }}')">Edit reply</button>
+                    {% else %}
+                    <button class="reply-toggle" onclick="toggleReply('reply-form-{{ r.id }}')"><i class="fa-solid fa-reply"></i> Reply to this review</button>
+                    {% endif %}
+                    <form id="reply-form-{{ r.id }}" method="POST" action="/review/{{ r.id }}/reply" style="display:none;margin-top:8px;">
+                        <textarea name="reply" rows="2" placeholder="Write a reply...">{{ r.reply or '' }}</textarea>
+                        <button type="submit" class="reply-submit"><i class="fa-solid fa-paper-plane"></i> Send Reply</button>
+                    </form>
+                </div>
             </div>
             {% endfor %}
         {% else %}
@@ -105,6 +124,10 @@
 </div>
 
 <script>
+function toggleReply(id) {
+    var f = document.getElementById(id);
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
 function switchTab(id, el) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
