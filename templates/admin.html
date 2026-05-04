@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel — Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #011a02; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 20px; padding: 14px 32px; background: #022f05; border-bottom: 2px solid #c49b3a; }
+        nav .brand { font-size: 18px; font-weight: 900; color: #c49b3a; text-decoration: none; margin-right: auto; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 14px; opacity: 0.8; }
+        nav a:hover { color: #c49b3a; opacity: 1; }
+
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 36px 24px 80px; }
+        h1 { font-size: 26px; font-weight: 900; color: #c49b3a; margin-bottom: 8px; }
+        .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 36px; }
+        .stat { background: rgba(196,155,58,0.1); border: 1px solid rgba(196,155,58,0.25); border-radius: 12px; padding: 20px 28px; text-align: center; }
+        .stat .num { font-size: 32px; font-weight: 900; color: #c49b3a; }
+        .stat .lbl { font-size: 13px; color: rgba(255,248,220,0.6); margin-top: 4px; }
+
+        .section { margin-bottom: 48px; }
+        .section h2 { font-size: 18px; font-weight: 800; color: #fff8dc; margin-bottom: 16px; border-bottom: 1px solid rgba(196,155,58,0.2); padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: rgba(196,155,58,0.12); color: #c49b3a; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+        td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+        .badge-verified { background: rgba(34,180,34,0.2); color: #66dd66; border: 1px solid rgba(34,180,34,0.4); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+        .badge-unverified { background: rgba(255,255,255,0.06); color: rgba(255,248,220,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 3px 10px; font-size: 11px; }
+        .btn-sm { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; }
+        .btn-verify { background: rgba(34,180,34,0.2); color: #66dd66; border: 1px solid rgba(34,180,34,0.4); }
+        .btn-verify:hover { background: rgba(34,180,34,0.35); }
+        .btn-del { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); }
+        .btn-del:hover { background: rgba(200,50,50,0.35); }
+        .artisan-thumb { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(196,155,58,0.3); }
+        .msg-text { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,248,220,0.7); }
+        @media(max-width:700px) { table { font-size: 12px; } td,th { padding: 8px; } }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><i class="fa-solid fa-shield-halved"></i> Admin Panel</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Artisans</a>
+    <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+    <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+</nav>
+
+<div class="wrap">
+    <h1><i class="fa-solid fa-gauge"></i> Dashboard</h1>
+    <div class="stats">
+        <div class="stat"><div class="num">{{ artisans|length }}</div><div class="lbl">Artisans</div></div>
+        <div class="stat"><div class="num">{{ users|length }}</div><div class="lbl">Users</div></div>
+        <div class="stat"><div class="num">{{ msgs|length }}</div><div class="lbl">Messages</div></div>
+        <div class="stat"><div class="num">{{ artisans|selectattr('verified')|list|length }}</div><div class="lbl">Verified</div></div>
+    </div>
+
+    <!-- ARTISANS -->
+    <div class="section">
+        <h2><i class="fa-solid fa-hammer"></i> Artisans</h2>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>Photo</th><th>Name</th><th>Skill</th><th>Location</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for a in artisans %}
+            <tr>
+                <td>{% if a.image %}<img src="{{ a.image if a.image.startswith('http') else '/static/uploads/'+a.image }}" class="artisan-thumb">{% else %}<i class="fa-solid fa-user" style="color:rgba(196,155,58,0.4);font-size:24px;"></i>{% endif %}</td>
+                <td><a href="/artisan/{{ a.id }}" style="color:#c49b3a;text-decoration:none;">{{ a.name }}</a></td>
+                <td>{{ a.skill }}</td>
+                <td>{{ a.location }}</td>
+                <td>{{ a.phone }}</td>
+                <td>{% if a.verified %}<span class="badge-verified"><i class="fa-solid fa-check"></i> Verified</span>{% else %}<span class="badge-unverified">Unverified</span>{% endif %}</td>
+                <td style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <form method="POST" action="/admin/verify/{{ a.id }}" style="display:inline;">
+                        <button class="btn-sm btn-verify" type="submit">{% if a.verified %}Unverify{% else %}Verify{% endif %}</button>
+                    </form>
+                    <form method="POST" action="/admin/delete-artisan/{{ a.id }}" style="display:inline;" onsubmit="return confirm('Delete {{ a.name }}?')">
+                        <button class="btn-sm btn-del" type="submit"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="section">
+        <h2><i class="fa-solid fa-users"></i> Users</h2>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.name }}</td>
+                <td>{{ u.email }}</td>
+                <td>
+                    <form method="POST" action="/admin/delete-user/{{ u.id }}" style="display:inline;" onsubmit="return confirm('Delete user {{ u.name }}?')">
+                        <button class="btn-sm btn-del" type="submit"><i class="fa-solid fa-trash"></i> Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="section">
+        <h2><i class="fa-solid fa-envelope"></i> Inquiry Messages</h2>
+        {% if msgs %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>To Artisan</th><th>From</th><th>Phone</th><th>Message</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for m in msgs %}
+            <tr>
+                <td>{{ m.artisan_name or '—' }}</td>
+                <td>{{ m.sender_name }}</td>
+                <td>{{ m.sender_phone }}</td>
+                <td class="msg-text">{{ m.message }}</td>
+                <td style="color:rgba(255,248,220,0.45);white-space:nowrap;">{{ m.created_at }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p style="color:rgba(255,248,220,0.4);">No messages yet.</p>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>

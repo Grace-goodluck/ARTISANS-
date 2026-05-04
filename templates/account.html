@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings — Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/logo.jpeg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 24px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 100; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s, color 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        .nav-register { background: #c49b3a; color: #022f05 !important; font-weight: 700; padding: 8px 18px; border-radius: 20px; opacity: 1 !important; }
+        .nav-register:hover { background: #e0b84a !important; }
+
+        .page-wrap { max-width: 700px; margin: 0 auto; padding: 48px 24px 80px; }
+        h1 { font-size: 28px; font-weight: 900; color: #fff8dc; margin-bottom: 6px; }
+        .page-sub { color: rgba(255,248,220,0.5); font-size: 15px; margin-bottom: 36px; }
+
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.2); border-radius: 16px; padding: 32px; margin-bottom: 24px; }
+        .card h2 { font-size: 17px; font-weight: 800; color: #c49b3a; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 12px; font-weight: 700; color: rgba(255,248,220,0.6); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .field input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(196,155,58,0.25); background: rgba(255,255,255,0.06); color: #fff8dc; font-size: 15px; outline: none; transition: border 0.2s; }
+        .field input:focus { border-color: #c49b3a; }
+        .field input::placeholder { color: rgba(255,248,220,0.3); }
+        .btn { padding: 12px 28px; border-radius: 30px; background: #c49b3a; color: #022f05; font-weight: 800; font-size: 15px; border: none; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #e0b84a; }
+        .success { background: rgba(34,139,34,0.15); border: 1px solid rgba(34,139,34,0.4); border-radius: 8px; padding: 10px 14px; color: #88dd88; font-size: 14px; margin-bottom: 16px; }
+        .error { background: rgba(220,50,50,0.15); border: 1px solid rgba(220,50,50,0.4); border-radius: 8px; padding: 10px 14px; color: #ff8888; font-size: 14px; margin-bottom: 16px; }
+        .my-profile-link { display: flex; align-items: center; gap: 12px; background: rgba(196,155,58,0.1); border: 1px solid rgba(196,155,58,0.3); border-radius: 12px; padding: 16px 20px; text-decoration: none; color: #c49b3a; font-weight: 700; transition: background 0.2s; }
+        .my-profile-link:hover { background: rgba(196,155,58,0.2); }
+        @media(max-width:500px) { nav { padding: 14px 16px; gap: 12px; } .card { padding: 24px 18px; } }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+    {% if session.user_id %}
+        <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    {% else %}
+        <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+    {% endif %}
+</nav>
+
+<div class="page-wrap">
+    <h1><i class="fa-solid fa-gear"></i> Account Settings</h1>
+    <p class="page-sub">Manage your profile and security settings</p>
+
+    {% if my_artisan %}
+    <div class="card">
+        <h2><i class="fa-solid fa-id-card"></i> My Artisan Profile</h2>
+        <a href="/artisan/{{ my_artisan.id }}" class="my-profile-link">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> View My Artisan Profile
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2><i class="fa-solid fa-user"></i> Personal Information</h2>
+        {% if message and msg_type == 'success' and 'Profile' in message %}<div class="success"><i class="fa-solid fa-circle-check"></i> {{ message }}</div>{% endif %}
+        {% if message and msg_type == 'error' and 'email' in message %}<div class="error"><i class="fa-solid fa-circle-exclamation"></i> {{ message }}</div>{% endif %}
+        <form method="POST">
+            <input type="hidden" name="action" value="update_profile">
+            <div class="field">
+                <label>Full Name</label>
+                <input type="text" name="name" value="{{ user.name or '' }}" required>
+            </div>
+            <div class="field">
+                <label>Email Address</label>
+                <input type="email" name="email" value="{{ user.email or '' }}" required>
+            </div>
+            <button type="submit" class="btn"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2><i class="fa-solid fa-lock"></i> Change Password</h2>
+        {% if message and 'Password' in message and msg_type == 'success' %}<div class="success"><i class="fa-solid fa-circle-check"></i> {{ message }}</div>{% endif %}
+        {% if message and 'password' in message and msg_type == 'error' %}<div class="error"><i class="fa-solid fa-circle-exclamation"></i> {{ message }}</div>{% endif %}
+        <form method="POST">
+            <input type="hidden" name="action" value="change_password">
+            <div class="field">
+                <label>Current Password</label>
+                <input type="password" name="current_password" placeholder="Enter current password" required>
+            </div>
+            <div class="field">
+                <label>New Password</label>
+                <input type="password" name="new_password" placeholder="Enter new password" required>
+            </div>
+            <button type="submit" class="btn"><i class="fa-solid fa-key"></i> Change Password</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2><i class="fa-solid fa-bookmark"></i> Quick Links</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a href="/saved" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.2);border-radius:10px;padding:12px 18px;color:#fff8dc;text-decoration:none;font-weight:600;"><i class="fa-solid fa-heart" style="color:#c49b3a;"></i> Saved Artisans</a>
+            <a href="/artisans" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.2);border-radius:10px;padding:12px 18px;color:#fff8dc;text-decoration:none;font-weight:600;"><i class="fa-solid fa-users" style="color:#c49b3a;"></i> Find Artisans</a>
+            <a href="/add-artisan" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.2);border-radius:10px;padding:12px 18px;color:#fff8dc;text-decoration:none;font-weight:600;"><i class="fa-solid fa-plus" style="color:#c49b3a;"></i> Register Artisan</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

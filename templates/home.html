@@ -273,13 +273,17 @@
         .cta-banner h2 { font-size: 32px; font-weight: 800; margin-bottom: 14px; }
         .cta-banner p { opacity: 0.75; margin-bottom: 32px; font-size: 17px; max-width: 500px; margin-left: auto; margin-right: auto; }
 
-        footer {
-            background: #011a03;
-            color: rgba(255,248,220,0.45);
-            text-align: center;
-            padding: 22px;
-            font-size: 13px;
-        }
+        .categories-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 24px; }
+        .cat-pill { display: inline-flex; align-items: center; gap: 7px; background: rgba(196,155,58,0.1); border: 1px solid rgba(196,155,58,0.25); color: #c49b3a; padding: 9px 18px; border-radius: 30px; text-decoration: none; font-size: 14px; font-weight: 600; transition: background 0.2s, transform 0.15s; }
+        .cat-pill:hover { background: rgba(196,155,58,0.22); transform: translateY(-2px); }
+
+        footer { background: #011a03; border-top: 1px solid rgba(196,155,58,0.12); padding: 40px 24px 24px; }
+        .footer-inner { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; margin-bottom: 28px; }
+        .footer-col h4 { color: #c49b3a; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
+        .footer-col a { display: block; color: rgba(255,248,220,0.55); text-decoration: none; font-size: 14px; margin-bottom: 8px; transition: color 0.2s; }
+        .footer-col a:hover { color: #c49b3a; }
+        .footer-bottom { text-align: center; color: rgba(255,248,220,0.3); font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; }
+        @media(max-width:600px) { .footer-inner { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
@@ -309,6 +313,8 @@
     </a>
     <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
     {% if session.user_id %}
+        <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+        <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
         <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     {% else %}
@@ -479,6 +485,19 @@
     </div>
 </div>
 
+<!-- BROWSE BY CATEGORY -->
+{% if categories %}
+<div class="section">
+    <h2 class="section-title">Browse by Skill</h2>
+    <p class="section-sub">Tap a category to find artisans with that skill.</p>
+    <div class="categories-wrap">
+        {% for cat in categories %}
+        <a href="/artisans?search={{ cat.skill }}" class="cat-pill"><i class="fa-solid fa-hammer"></i> {{ cat.skill }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- CTA BANNER -->
 <div class="cta-banner">
     <h2>Are You a Skilled Artisan?</h2>
@@ -487,7 +506,27 @@
 </div>
 
 <footer>
-    &copy; 2026 Artisaan's Crib. All rights reserved.
+    <div class="footer-inner">
+        <div class="footer-col">
+            <h4>Artisaan's Crib</h4>
+            <a href="/">Home</a>
+            <a href="/artisans">Find Artisan</a>
+            <a href="/add-artisan">Register as Artisan</a>
+        </div>
+        <div class="footer-col">
+            <h4>Account</h4>
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+            <a href="/account">Account Settings</a>
+            <a href="/saved">Saved Artisans</a>
+        </div>
+        <div class="footer-col">
+            <h4>Support</h4>
+            <a href="/forgot-password">Forgot Password</a>
+            <a href="mailto:goodluckgrace08@gmail.com">Contact Us</a>
+        </div>
+    </div>
+    <div class="footer-bottom">&copy; 2026 Artisaan's Crib. All rights reserved.</div>
 </footer>
 
 <script>

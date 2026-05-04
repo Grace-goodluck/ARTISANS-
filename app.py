@@ -127,8 +127,20 @@ def db_insert(conn, sql, params=()):
     return conn.execute('SELECT last_insert_rowid()').fetchone()[0]
 
 
+ADMIN_EMAIL = "goodluckgrace08@gmail.com"
+
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def is_admin():
+    if 'user_id' not in session:
+        return False
+    conn = get_db_connection()
+    user = db_execute(conn, "SELECT email FROM users WHERE id=?", (session['user_id'],)).fetchone()
+    conn.close()
+    return bool(user and user['email'] == ADMIN_EMAIL)
 
 
 # ── No-cache header ────────────────────────────────────────────────────────────
@@ -202,6 +214,36 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS bookmarks (
+            id {PK},
+            user_id INTEGER,
+            artisan_id INTEGER
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS messages (
+            id {PK},
+            artisan_id INTEGER,
+            sender_name TEXT,
+            sender_phone TEXT,
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    for col, definition in [
+        ("verified", "INTEGER DEFAULT 0"),
+        ("user_id", "INTEGER"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
     conn.commit()
     conn.close()
 
@@ -238,8 +280,9 @@ def home():
     count = db_execute(conn, "SELECT COUNT(*) as c FROM artisans WHERE name IS NOT NULL AND name != ''").fetchone()
     artisan_count = count['c'] if count else 0
     recent = db_execute(conn, "SELECT * FROM artisans WHERE name IS NOT NULL AND name != '' ORDER BY id DESC LIMIT 4").fetchall()
+    categories = db_execute(conn, "SELECT DISTINCT skill FROM artisans WHERE skill IS NOT NULL AND skill != '' ORDER BY skill LIMIT 16").fetchall()
     conn.close()
-    return render_template("home.html", artisan_count=artisan_count, recent_artisans=recent)
+    return render_template("home.html", artisan_count=artisan_count, recent_artisans=recent, categories=categories)
 
 
 @app.route("/artisans")
@@ -318,8 +361,8 @@ def add_artisan():
             return render_template("add_artisan.html", error="An artisan with that name, skill, and phone number already exists.")
 
         artisan_id = db_insert(conn,
-            "INSERT INTO artisans (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image_url)
+            "INSERT INTO artisans (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image,user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (name,email,dob,gender,languages,skill,experience,certifications,availability,price_range,location,service_area,phone,whatsapp,instagram,facebook,tiktok,twitter,youtube,website,description,custom_orders,marketing,image_url,session.get('user_id'))
         )
 
         for photo in request.files.getlist("portfolio")[:5]:
@@ -446,14 +489,20 @@ def artisan_profile(id):
 
     reviews   = db_execute(conn, "SELECT * FROM reviews WHERE artisan_id=? ORDER BY created_at DESC", (id,)).fetchall()
     portfolio = db_execute(conn, "SELECT image FROM portfolios WHERE artisan_id=?", (id,)).fetchall()
+    is_bookmarked = False
+    if 'user_id' in session:
+        bm = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
+        is_bookmarked = bool(bm)
     conn.close()
 
     review_count   = len(reviews)
     average_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
+    contacted = request.args.get('contacted') == '1'
 
     return render_template('artisan_profile_new.html',
         artisan=artisan, reviews=reviews,
-        average_rating=average_rating, review_count=review_count, portfolio=portfolio)
+        average_rating=average_rating, review_count=review_count,
+        portfolio=portfolio, is_bookmarked=is_bookmarked, contacted=contacted)
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])
@@ -542,6 +591,151 @@ def forgot_password():
             message = "Email not found!"
         conn.close()
     return render_template('forgot_password.html', message=message)
+
+
+@app.route('/account', methods=['GET', 'POST'])
+def account():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    user = db_execute(conn, "SELECT * FROM users WHERE id=?", (session['user_id'],)).fetchone()
+    my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    message = ""
+    msg_type = ""
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'update_profile':
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            try:
+                db_execute(conn, "UPDATE users SET name=?, email=? WHERE id=?", (name, email, session['user_id']))
+                conn.commit()
+                message = "Profile updated successfully!"
+                msg_type = "success"
+                user = db_execute(conn, "SELECT * FROM users WHERE id=?", (session['user_id'],)).fetchone()
+            except Exception:
+                try: conn.rollback()
+                except: pass
+                message = "That email is already in use."
+                msg_type = "error"
+        elif action == 'change_password':
+            current = request.form.get('current_password', '')
+            new_pass = request.form.get('new_password', '')
+            stored = user['password']
+            if isinstance(stored, memoryview): stored = bytes(stored)
+            if isinstance(stored, str): stored = stored.encode('utf-8')
+            try:
+                if bcrypt.checkpw(current.encode('utf-8'), stored):
+                    hashed = bcrypt.hashpw(new_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    db_execute(conn, "UPDATE users SET password=? WHERE id=?", (hashed, session['user_id']))
+                    conn.commit()
+                    message = "Password changed successfully!"
+                    msg_type = "success"
+                else:
+                    message = "Current password is incorrect."
+                    msg_type = "error"
+            except Exception:
+                message = "Password change failed."
+                msg_type = "error"
+    conn.close()
+    return render_template('account.html', user=user, my_artisan=my_artisan, message=message, msg_type=msg_type)
+
+
+@app.route('/artisan/<int:id>/bookmark', methods=['POST'])
+def toggle_bookmark(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    existing = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
+    if existing:
+        db_execute(conn, "DELETE FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id))
+    else:
+        db_execute(conn, "INSERT INTO bookmarks (user_id, artisan_id) VALUES (?,?)", (session['user_id'], id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id))
+
+
+@app.route('/saved')
+def saved_artisans():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    rows = db_execute(conn, """
+        SELECT a.* FROM artisans a
+        JOIN bookmarks b ON b.artisan_id = a.id
+        WHERE b.user_id = ?
+        ORDER BY b.id DESC
+    """, (session['user_id'],)).fetchall()
+    conn.close()
+    return render_template('saved.html', artisans=rows)
+
+
+@app.route('/artisan/<int:id>/message', methods=['POST'])
+def send_message(id):
+    conn = get_db_connection()
+    db_execute(conn, "INSERT INTO messages (artisan_id, sender_name, sender_phone, message) VALUES (?,?,?,?)",
+        (id, request.form.get('sender_name',''), request.form.get('sender_phone',''), request.form.get('message','')))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '?contacted=1')
+
+
+@app.route('/admin')
+def admin_panel():
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    artisans = db_execute(conn, "SELECT * FROM artisans ORDER BY id DESC").fetchall()
+    users = db_execute(conn, "SELECT * FROM users ORDER BY id DESC").fetchall()
+    msgs = db_execute(conn, """
+        SELECT m.*, a.name as artisan_name FROM messages m
+        LEFT JOIN artisans a ON a.id = m.artisan_id
+        ORDER BY m.created_at DESC
+    """).fetchall()
+    conn.close()
+    return render_template('admin.html', artisans=artisans, users=users, msgs=msgs)
+
+
+@app.route('/admin/verify/<int:id>', methods=['POST'])
+def verify_artisan(id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT verified FROM artisans WHERE id=?", (id,)).fetchone()
+    db_execute(conn, "UPDATE artisans SET verified=? WHERE id=?", (0 if a and a['verified'] else 1, id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/delete-artisan/<int:id>', methods=['POST'])
+def admin_delete_artisan(id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    for sql in [
+        "DELETE FROM reviews WHERE artisan_id=?",
+        "DELETE FROM portfolios WHERE artisan_id=?",
+        "DELETE FROM bookmarks WHERE artisan_id=?",
+        "DELETE FROM messages WHERE artisan_id=?",
+        "DELETE FROM artisans WHERE id=?",
+    ]:
+        db_execute(conn, sql, (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/delete-user/<int:id>', methods=['POST'])
+def admin_delete_user(id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    db_execute(conn, "DELETE FROM users WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_panel'))
 
 
 @app.errorhandler(500)

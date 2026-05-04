@@ -415,7 +415,7 @@
     </div>
 
     <div class="hero-info">
-        <h1>{{ artisan.name }}</h1>
+        <h1>{{ artisan.name }} {% if artisan.verified %}<span style="font-size:18px;color:#c49b3a;" title="Verified Artisan"><i class="fa-solid fa-circle-check"></i></span>{% endif %}</h1>
         <div class="skill-badge"><i class="fa-solid fa-hammer"></i> {{ artisan.skill }}</div>
         <div class="hero-meta">
             <span><i class="fa-solid fa-location-dot"></i> {{ artisan.location }}</span>
@@ -442,12 +442,24 @@
     </div>
 </div>
 
+{% if contacted %}
+<div id="contact-toast" style="position:fixed;bottom:24px;right:24px;background:#c49b3a;color:#022f05;padding:14px 22px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <i class="fa-solid fa-circle-check"></i> Message sent! The artisan will get back to you.
+</div>
+<script>setTimeout(function(){var t=document.getElementById('contact-toast');if(t)t.style.display='none';},4000);</script>
+{% endif %}
+
 <!-- CONTACT -->
 <div class="contact-row">
     {% if session.user_id %}
     <a href="/artisan/{{ artisan.id }}/edit" class="cta-btn" style="background:rgba(196,155,58,0.15);color:#c49b3a;border:1px solid rgba(196,155,58,0.4);">
         <i class="fa-solid fa-pen-to-square"></i> Edit Profile
     </a>
+    <form method="POST" action="/artisan/{{ artisan.id }}/bookmark" style="display:inline;">
+        <button type="submit" class="cta-btn" style="background:{% if is_bookmarked %}rgba(196,155,58,0.3){% else %}rgba(255,255,255,0.07){% endif %};color:{% if is_bookmarked %}#c49b3a{% else %}#fff8dc{% endif %};border:1px solid rgba(196,155,58,0.3);cursor:pointer;">
+            <i class="fa-{% if is_bookmarked %}solid{% else %}regular{% endif %} fa-heart"></i> {% if is_bookmarked %}Saved{% else %}Save{% endif %}
+        </button>
+    </form>
     {% endif %}
     <a href="tel:{{ artisan.phone }}" class="cta-btn btn-call">
         <i class="fa-solid fa-phone"></i> Call
@@ -623,6 +635,29 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- SEND MESSAGE -->
+    <div class="section-card full-width">
+        <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Send an Inquiry</div>
+        <p style="color:rgba(255,248,220,0.55);font-size:14px;margin-bottom:18px;">Leave your details and {{ artisan.name.split()[0] }} will get back to you.</p>
+        <form method="POST" action="/artisan/{{ artisan.id }}/message" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.7px;">Your Name</label>
+                <input type="text" name="sender_name" placeholder="Enter your name" required style="padding:11px 14px;border-radius:10px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:14px;outline:none;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.7px;">Your Phone</label>
+                <input type="tel" name="sender_phone" placeholder="Enter your phone" required style="padding:11px 14px;border-radius:10px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:14px;outline:none;">
+            </div>
+            <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.7px;">Message</label>
+                <textarea name="message" rows="3" placeholder="Describe what you need..." required style="padding:11px 14px;border-radius:10px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:14px;outline:none;resize:vertical;"></textarea>
+            </div>
+            <div style="grid-column:1/-1;">
+                <button type="submit" style="padding:12px 28px;border-radius:30px;background:#c49b3a;color:#022f05;font-weight:800;font-size:15px;border:none;cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Send Message</button>
+            </div>
+        </form>
+    </div>
 
     <!-- REVIEWS -->
     <div class="section-card full-width">

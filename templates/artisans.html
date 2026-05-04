@@ -65,6 +65,8 @@
     <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
     <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
     {% if session.user_id %}
+        <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+        <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
         <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     {% else %}
