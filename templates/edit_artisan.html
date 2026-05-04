@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Profile — {{ artisan.name }}</title>
+    <title>Edit Profile | {{ artisan.name }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -291,7 +291,7 @@
         {% if artisan.image %}
         <div class="current-pic">
             <img src="{{ artisan.image if artisan.image.startswith('http') else '/static/uploads/' + artisan.image }}" alt="Current profile pic">
-            <span>Current profile picture — upload a new one below to replace it</span>
+            <span>Current profile picture. Upload a new one below to replace it</span>
         </div>
         {% endif %}
         <div class="field">
