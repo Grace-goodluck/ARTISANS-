@@ -99,6 +99,7 @@
             padding: 14px 40px;
             background: #022f05;
             border-bottom: 2px solid #c49b3a;
+            position: sticky; top: 0; z-index: 200;
         }
         nav .brand {
             display: flex;
@@ -125,6 +126,18 @@
             gap: 6px;
         }
         .nav-register:hover { background: #e0b84a !important; }
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+        .hamburger span { display: block; width: 24px; height: 2px; background: #fff8dc; border-radius: 2px; transition: all 0.3s; }
+        .nav-links { display: flex; align-items: center; gap: 24px; }
+        @media(max-width: 768px) {
+            nav { padding: 14px 20px; gap: 12px; }
+            .hamburger { display: flex; }
+            .nav-links { display: none; flex-direction: column; align-items: flex-start; gap: 0; position: absolute; top: 100%; left: 0; right: 0; background: #022f05; border-bottom: 2px solid #c49b3a; padding: 12px 20px 20px; z-index: 200; }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 10px 0; width: 100%; border-bottom: 1px solid rgba(196,155,58,0.1); font-size: 15px; }
+            .nav-links a:last-child { border-bottom: none; }
+            .nav-register { border-radius: 0; padding: 10px 0; background: none !important; color: #c49b3a !important; }
+        }
 
         /* HERO */
         .hero {
@@ -311,17 +324,25 @@
         <img src="/static/logo.jpeg" alt="Logo">
         Artisaan's Crib
     </a>
-    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
-    {% if session.user_id %}
-        <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
-        <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
-        <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
-        <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-    {% else %}
-        <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
-        <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
-    {% endif %}
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+        <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+        {% if session.user_id %}
+            <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+            <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
+            <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+            <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+            <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+            <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        {% else %}
+            <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+            <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
+        {% endif %}
+    </div>
 </nav>
+<script>function toggleNav(){document.getElementById('nav-links').classList.toggle('open');}</script>
 
 <!-- HERO -->
 <div class="hero">
