@@ -245,6 +245,17 @@ def create_table():
             try: conn.rollback()
             except: pass
 
+    for col, definition in [
+        ("avatar", "TEXT"),
+        ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE users ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
     conn.commit()
     conn.close()
 
@@ -665,10 +676,13 @@ def account():
     conn = get_db_connection()
     user = db_execute(conn, "SELECT * FROM users WHERE id=?", (session['user_id'],)).fetchone()
     my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    saved_count = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE user_id=?", (session['user_id'],)).fetchone()['c']
     message = ""
     msg_type = ""
+
     if request.method == 'POST':
         action = request.form.get('action')
+
         if action == 'update_profile':
             name = request.form.get('name', '').strip()
             email = request.form.get('email', '').strip()
@@ -683,6 +697,20 @@ def account():
                 except: pass
                 message = "That email is already in use."
                 msg_type = "error"
+
+        elif action == 'update_avatar':
+            pic = request.files.get('avatar')
+            if pic and pic.filename and allowed_file(pic.filename):
+                url = upload_image(pic)
+                db_execute(conn, "UPDATE users SET avatar=? WHERE id=?", (url, session['user_id']))
+                conn.commit()
+                message = "Profile picture updated!"
+                msg_type = "success"
+                user = db_execute(conn, "SELECT * FROM users WHERE id=?", (session['user_id'],)).fetchone()
+            else:
+                message = "Please select a valid image (png, jpg, jpeg, gif, webp)."
+                msg_type = "error"
+
         elif action == 'change_password':
             current = request.form.get('current_password', '')
             new_pass = request.form.get('new_password', '')
@@ -702,8 +730,28 @@ def account():
             except Exception:
                 message = "Password change failed."
                 msg_type = "error"
+
+        elif action == 'delete_account':
+            uid = session['user_id']
+            # delete all user data
+            db_execute(conn, "DELETE FROM bookmarks WHERE user_id=?", (uid,))
+            artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (uid,)).fetchone()
+            if artisan:
+                aid = artisan['id']
+                for sql in ["DELETE FROM reviews WHERE artisan_id=?",
+                            "DELETE FROM portfolios WHERE artisan_id=?",
+                            "DELETE FROM messages WHERE artisan_id=?",
+                            "DELETE FROM artisans WHERE id=?"]:
+                    db_execute(conn, sql, (aid,))
+            db_execute(conn, "DELETE FROM users WHERE id=?", (uid,))
+            conn.commit()
+            conn.close()
+            session.clear()
+            return redirect(url_for('home'))
+
     conn.close()
-    return render_template('account.html', user=user, my_artisan=my_artisan, message=message, msg_type=msg_type)
+    return render_template('account.html', user=user, my_artisan=my_artisan,
+                           message=message, msg_type=msg_type, saved_count=saved_count)
 
 
 @app.route('/artisan/<int:id>/bookmark', methods=['POST'])
