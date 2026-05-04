@@ -321,11 +321,43 @@
 <div class="hero">
     <h1>Find Skilled <span>Artisans</span><br>Near You</h1>
     <p>Connect with trusted, verified artisans for all your everyday needs. From plumbing to fashion design, everything is in one place.</p>
+    {% if artisan_count > 0 %}
+    <div style="display:inline-block;background:rgba(196,155,58,0.15);border:1px solid rgba(196,155,58,0.35);border-radius:30px;padding:8px 22px;font-size:15px;color:#c49b3a;font-weight:700;margin-bottom:24px;">
+        <i class="fa-solid fa-users"></i> {{ artisan_count }}+ Artisans Registered
+    </div>
+    {% endif %}
     <div class="hero-btns">
         <a href="/artisans" class="btn-gold"><i class="fa-solid fa-magnifying-glass"></i> Find an Artisan</a>
         <a href="/add-artisan" class="btn-outline"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
     </div>
 </div>
+
+<!-- RECENTLY ADDED -->
+{% if recent_artisans %}
+<div class="section">
+    <h2 class="section-title">Recently Added Artisans</h2>
+    <p class="section-sub">Newly registered artisans ready to serve you.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-top:28px;">
+        {% for a in recent_artisans %}
+        <a href="/artisan/{{ a.id }}" style="text-decoration:none;background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.15);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform 0.2s,border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.borderColor='rgba(196,155,58,0.4)'" onmouseout="this.style.transform='';this.style.borderColor='rgba(196,155,58,0.15)'">
+            {% if a.image %}
+            <img src="{{ a.image if a.image.startswith('http') else '/static/uploads/' + a.image }}" style="width:100%;height:160px;object-fit:cover;" alt="{{ a.name }}">
+            {% else %}
+            <div style="width:100%;height:160px;background:rgba(196,155,58,0.08);display:flex;align-items:center;justify-content:center;font-size:40px;color:rgba(196,155,58,0.3);"><i class="fa-solid fa-user"></i></div>
+            {% endif %}
+            <div style="padding:14px 16px;">
+                <div style="font-weight:800;font-size:16px;color:#fff8dc;margin-bottom:4px;">{{ a.name }}</div>
+                <div style="font-size:12px;color:#c49b3a;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">{{ a.skill }}</div>
+                {% if a.location %}<div style="font-size:12px;color:rgba(255,248,220,0.5);"><i class="fa-solid fa-location-dot"></i> {{ a.location }}</div>{% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    <div style="text-align:center;margin-top:28px;">
+        <a href="/artisans" class="btn-gold" style="display:inline-flex;align-items:center;gap:8px;"><i class="fa-solid fa-users"></i> View All Artisans</a>
+    </div>
+</div>
+{% endif %}
 
 <!-- ABOUT THE PLATFORM -->
 <div class="section">

@@ -234,27 +234,37 @@ def service_worker():
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    conn = get_db_connection()
+    count = db_execute(conn, "SELECT COUNT(*) as c FROM artisans WHERE name IS NOT NULL AND name != ''").fetchone()
+    artisan_count = count['c'] if count else 0
+    recent = db_execute(conn, "SELECT * FROM artisans WHERE name IS NOT NULL AND name != '' ORDER BY id DESC LIMIT 4").fetchall()
+    conn.close()
+    return render_template("home.html", artisan_count=artisan_count, recent_artisans=recent)
 
 
 @app.route("/artisans")
 def artisans():
-    search = request.args.get('search')
+    search = request.args.get('search', '').strip()
     conn = get_db_connection()
+    rating_sql = """
+        SELECT a.*,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a
+    """
     if search:
+        op = "ILIKE" if DATABASE_URL else "LIKE"
+        like = '%' + search + '%'
         rows = db_execute(conn,
-            "SELECT * FROM artisans WHERE skill ILIKE ?",
-            ('%' + search + '%',)
-        ).fetchall() if DATABASE_URL else db_execute(conn,
-            "SELECT * FROM artisans WHERE skill LIKE ?",
-            ('%' + search + '%',)
+            rating_sql + f" WHERE (a.skill {op} ? OR a.location {op} ? OR a.name {op} ?) AND a.name IS NOT NULL AND a.name != '' ORDER BY a.id DESC",
+            (like, like, like)
         ).fetchall()
     else:
         rows = db_execute(conn,
-            "SELECT * FROM artisans WHERE name IS NOT NULL AND name != ''"
+            rating_sql + " WHERE a.name IS NOT NULL AND a.name != '' ORDER BY a.id DESC"
         ).fetchall()
     conn.close()
-    return render_template("artisans.html", artisans=rows)
+    return render_template("artisans.html", artisans=rows, search=search)
 
 
 @app.route("/add-artisan", methods=["GET", "POST"])

@@ -461,6 +461,9 @@
         <i class="fa-solid fa-envelope"></i> Email
     </a>
     {% endif %}
+    <button onclick="shareProfile()" class="cta-btn" style="background:rgba(255,255,255,0.08);color:#fff8dc;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">
+        <i class="fa-solid fa-share-nodes"></i> Share
+    </button>
 </div>
 
 <!-- CONTENT GRID -->
@@ -665,6 +668,21 @@
     </div>
 
 </div>
+
+<script>
+function shareProfile() {
+    var name = "{{ artisan.name }}";
+    var skill = "{{ artisan.skill }}";
+    var url = window.location.href;
+    if (navigator.share) {
+        navigator.share({ title: name + ' — ' + skill, text: 'Check out ' + name + ' on Artisaan\'s Crib!', url: url });
+    } else {
+        navigator.clipboard.writeText(url).then(function() {
+            alert('Link copied to clipboard!');
+        });
+    }
+}
+</script>
 
 </body>
 </html>

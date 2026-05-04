@@ -7,54 +7,131 @@
     <meta name="theme-color" content="#022f05">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/logo.jpeg">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+
+        nav { display: flex; align-items: center; gap: 24px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 100; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s, color 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+        .nav-register { background: #c49b3a; color: #022f05 !important; font-weight: 700; padding: 8px 18px; border-radius: 20px; opacity: 1 !important; }
+        .nav-register:hover { background: #e0b84a !important; }
+
+        .page-header { padding: 48px 40px 32px; text-align: center; }
+        .page-header h1 { font-size: 36px; font-weight: 900; color: #fff8dc; margin-bottom: 8px; }
+        .page-header h1 span { color: #c49b3a; }
+        .page-header p { color: rgba(255,248,220,0.6); font-size: 16px; }
+
+        .search-wrap { max-width: 700px; margin: 0 auto 48px; padding: 0 20px; }
+        .search-form { display: flex; gap: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(196,155,58,0.3); border-radius: 50px; padding: 8px 8px 8px 20px; align-items: center; }
+        .search-form input { flex: 1; background: none; border: none; outline: none; color: #fff8dc; font-size: 15px; }
+        .search-form input::placeholder { color: rgba(255,248,220,0.4); }
+        .search-form button { background: #c49b3a; color: #022f05; border: none; border-radius: 40px; padding: 10px 22px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .search-form button:hover { background: #e0b84a; }
+        .search-hint { text-align: center; font-size: 13px; color: rgba(255,248,220,0.4); margin-top: 10px; }
+
+        .grid-wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px 60px; }
+        .artisan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; }
+
+        .artisan-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 16px; overflow: hidden; text-decoration: none; color: inherit; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
+        .artisan-card:hover { transform: translateY(-4px); border-color: rgba(196,155,58,0.4); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+        .card-img { width: 100%; height: 190px; object-fit: cover; background: rgba(255,255,255,0.05); }
+        .card-img-placeholder { width: 100%; height: 190px; background: rgba(196,155,58,0.08); display: flex; align-items: center; justify-content: center; font-size: 48px; color: rgba(196,155,58,0.3); }
+
+        .card-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .card-name { font-size: 18px; font-weight: 800; color: #fff8dc; }
+        .card-skill { display: inline-flex; align-items: center; gap: 6px; background: rgba(196,155,58,0.15); color: #c49b3a; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; width: fit-content; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-location { font-size: 13px; color: rgba(255,248,220,0.55); display: flex; align-items: center; gap: 5px; }
+        .card-stars { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #c49b3a; margin-top: 2px; }
+        .card-stars .count { color: rgba(255,248,220,0.5); font-size: 12px; }
+        .card-hire { margin-top: auto; padding-top: 14px; }
+        .hire-btn { width: 100%; padding: 10px; border-radius: 30px; background: #c49b3a; color: #022f05; font-weight: 800; font-size: 14px; border: none; cursor: pointer; transition: background 0.2s; }
+        .hire-btn:hover { background: #e0b84a; }
+
+        .result-info { text-align: center; color: rgba(255,248,220,0.5); font-size: 14px; margin-bottom: 24px; }
+        .no-result { text-align: center; padding: 60px 20px; color: rgba(255,248,220,0.5); font-size: 18px; }
+        .no-result i { font-size: 48px; color: rgba(196,155,58,0.3); display: block; margin-bottom: 16px; }
+
+        @media(max-width:600px) { nav { padding: 14px 16px; gap: 12px; } .page-header { padding: 32px 20px 24px; } .page-header h1 { font-size: 26px; } }
+    </style>
 </head>
 <body>
 
 <nav>
-    <a href="/">Home</a>
-    <a href="/artisans">Find Artisan</a>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
     {% if session.user_id %}
-        <a href="/add-artisan">Register as Artisan</a>
-        <a href="/logout">Logout</a>
+        <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     {% else %}
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
+        <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        <a href="/register"><i class="fa-solid fa-user-plus"></i> Register</a>
     {% endif %}
 </nav>
 
-<h1>Available Artisans</h1>
+<div class="page-header">
+    <h1>Find <span>Skilled Artisans</span></h1>
+    <p>Search by skill, name, or location across Nigeria</p>
+</div>
 
-<form method="GET" class="search-box">
-    <input type="text" name="search" placeholder="Search for artisans..." value="{{ request.args.get('search', '') }}">
-    <button type="submit">Search</button>
-</form>
+<div class="search-wrap">
+    <form method="GET" class="search-form">
+        <input type="text" name="search" placeholder="e.g. Tailor, Plumber, Lagos..." value="{{ search }}">
+        <button type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    </form>
+    <p class="search-hint">Search by skill, artisan name, or location</p>
+</div>
 
-<div class="users-container">
+<div class="grid-wrap">
     {% if artisans %}
+    <p class="result-info">{{ artisans|length }} artisan{{ 's' if artisans|length != 1 }} found{% if search %} for "{{ search }}"{% endif %}</p>
+    <div class="artisan-grid">
         {% for artisan in artisans %}
-        <a href="/artisan/{{ artisan.id }}" class="card-link">
-            <div class="user-card">
-            
-            <div class="image-box">
-                {% if artisan.image %}
-                    <img src="{{ artisan.image if artisan.image.startswith('http') else url_for('static', filename='uploads/' + artisan.image) }}">
+        <a href="/artisan/{{ artisan.id }}" class="artisan-card">
+            {% if artisan.image %}
+                <img src="{{ artisan.image if artisan.image.startswith('http') else url_for('static', filename='uploads/' + artisan.image) }}" class="card-img" alt="{{ artisan.name }}">
+            {% else %}
+                <div class="card-img-placeholder"><i class="fa-solid fa-user"></i></div>
+            {% endif %}
+            <div class="card-body">
+                <div class="card-name">{{ artisan.name }}</div>
+                <div class="card-skill"><i class="fa-solid fa-hammer"></i> {{ artisan.skill }}</div>
+                {% if artisan.location %}
+                <div class="card-location"><i class="fa-solid fa-location-dot"></i> {{ artisan.location }}</div>
                 {% endif %}
-            </div>    
-
-            <h3>{{ artisan.name }}</h3>
-            <p>{{ artisan.skill }}</p>
-            <p class="location">{{ artisan.location }}</p>
-
-            <button class="hire-btn">Hire</button>
+                <div class="card-stars">
+                    {% set avg = artisan.avg_rating|float %}
+                    {% set full = avg|int %}
+                    {% set half = 1 if (avg - full >= 0.5) else 0 %}
+                    {% set empty = 5 - full - half %}
+                    {% if artisan.review_count > 0 %}
+                        {% for i in range(full) %}<i class="fa-solid fa-star"></i>{% endfor %}
+                        {% if half %}<i class="fa-solid fa-star-half-stroke"></i>{% endif %}
+                        {% for i in range(empty) %}<i class="fa-regular fa-star"></i>{% endfor %}
+                        <span class="count">({{ artisan.review_count }})</span>
+                    {% else %}
+                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                        <span class="count">No reviews</span>
+                    {% endif %}
+                </div>
+                <div class="card-hire">
+                    <button class="hire-btn">View Profile</button>
+                </div>
             </div>
-        </a>    
+        </a>
         {% endfor %}
+    </div>
     {% else %}
-        <p class="no-result">No artisans found</p>
-    {% endif %}    
+    <div class="no-result">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        {% if search %}No artisans found for "{{ search }}". Try a different search.{% else %}No artisans registered yet.{% endif %}
+    </div>
+    {% endif %}
 </div>
 
 </body>
 </html>
-    
