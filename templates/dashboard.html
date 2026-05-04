@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard — Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+
+        nav { display: flex; align-items: center; gap: 20px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+
+        .wrap { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+        h1 { font-size: 26px; font-weight: 900; color: #fff8dc; margin-bottom: 4px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 14px; margin-bottom: 32px; }
+
+        /* PROFILE STRIP */
+        .profile-strip { display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.2); border-radius: 16px; padding: 20px 24px; margin-bottom: 28px; flex-wrap: wrap; }
+        .profile-strip img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #c49b3a; }
+        .profile-strip .avatar-ph { width: 72px; height: 72px; border-radius: 50%; border: 2px solid #c49b3a; background: rgba(196,155,58,0.1); display: flex; align-items: center; justify-content: center; font-size: 30px; color: #c49b3a; }
+        .strip-info h2 { font-size: 20px; font-weight: 800; }
+        .strip-info p { font-size: 13px; color: rgba(255,248,220,0.55); margin-top: 3px; }
+        .strip-actions { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+        .strip-btn { padding: 9px 18px; border-radius: 25px; font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid rgba(196,155,58,0.4); color: #c49b3a; background: rgba(196,155,58,0.1); transition: background 0.2s; }
+        .strip-btn:hover { background: rgba(196,155,58,0.2); }
+        .strip-btn.primary { background: #c49b3a; color: #022f05; border-color: #c49b3a; }
+        .strip-btn.primary:hover { background: #e0b84a; }
+
+        /* STATS */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 14px; padding: 22px 24px; text-align: center; }
+        .stat .icon { font-size: 26px; color: #c49b3a; margin-bottom: 10px; }
+        .stat .num { font-size: 36px; font-weight: 900; color: #fff8dc; line-height: 1; }
+        .stat .lbl { font-size: 13px; color: rgba(255,248,220,0.5); margin-top: 5px; }
+
+        /* RECENT MESSAGES */
+        .section-title { font-size: 16px; font-weight: 800; color: #fff8dc; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-title i { color: #c49b3a; }
+        .msg-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.12); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+        .msg-card .msg-from { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+        .msg-card .msg-phone { font-size: 12px; color: rgba(255,248,220,0.45); margin-bottom: 8px; }
+        .msg-card .msg-text { font-size: 14px; color: rgba(255,248,220,0.75); line-height: 1.5; }
+        .msg-card .msg-date { font-size: 11px; color: rgba(255,248,220,0.3); margin-top: 8px; }
+        .empty { color: rgba(255,248,220,0.4); font-size: 14px; padding: 16px 0; }
+
+        .view-all { display: inline-flex; align-items: center; gap: 6px; color: #c49b3a; font-size: 13px; font-weight: 700; text-decoration: none; margin-top: 8px; }
+        .view-all:hover { text-decoration: underline; }
+
+        @media(max-width:600px) { nav { padding: 14px 16px; gap: 10px; } .wrap { padding: 28px 16px 60px; } }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+    <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+    <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
+    <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+    <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+</nav>
+
+<div class="wrap">
+    <h1><i class="fa-solid fa-gauge"></i> My Dashboard</h1>
+    <p class="sub">Overview of your artisan profile performance</p>
+
+    <!-- PROFILE STRIP -->
+    <div class="profile-strip">
+        {% if artisan.image %}
+            <img src="{{ artisan.image if artisan.image.startswith('http') else '/static/uploads/' + artisan.image }}" alt="{{ artisan.name }}">
+        {% else %}
+            <div class="avatar-ph"><i class="fa-solid fa-user"></i></div>
+        {% endif %}
+        <div class="strip-info">
+            <h2>{{ artisan.name }} {% if artisan.verified %}<i class="fa-solid fa-circle-check" style="color:#c49b3a;font-size:16px;" title="Verified"></i>{% endif %}</h2>
+            <p><i class="fa-solid fa-hammer" style="color:#c49b3a;"></i> {{ artisan.skill }} &nbsp;·&nbsp; <i class="fa-solid fa-location-dot" style="color:#c49b3a;"></i> {{ artisan.location }}</p>
+        </div>
+        <div class="strip-actions">
+            <a href="/artisan/{{ artisan.id }}" class="strip-btn">View Profile</a>
+            <a href="/artisan/{{ artisan.id }}/edit" class="strip-btn primary"><i class="fa-solid fa-pen"></i> Edit</a>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-eye"></i></div>
+            <div class="num">{{ artisan.view_count or 0 }}</div>
+            <div class="lbl">Profile Views</div>
+        </div>
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-envelope"></i></div>
+            <div class="num">{{ msg_count }}</div>
+            <div class="lbl">Inquiries Received</div>
+        </div>
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-star"></i></div>
+            <div class="num">{{ review_count }}</div>
+            <div class="lbl">Reviews</div>
+        </div>
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-ranking-star"></i></div>
+            <div class="num">{{ avg_rating }}</div>
+            <div class="lbl">Average Rating</div>
+        </div>
+    </div>
+
+    <!-- RECENT MESSAGES -->
+    <div class="section-title"><i class="fa-solid fa-envelope"></i> Recent Inquiries</div>
+    {% if recent_msgs %}
+        {% for m in recent_msgs %}
+        <div class="msg-card">
+            <div class="msg-from"><i class="fa-solid fa-user" style="color:#c49b3a;margin-right:6px;"></i>{{ m.sender_name }}</div>
+            <div class="msg-phone"><i class="fa-solid fa-phone" style="color:#c49b3a;margin-right:4px;"></i>{{ m.sender_phone }}</div>
+            <div class="msg-text">{{ m.message }}</div>
+            <div class="msg-date">{{ m.created_at }}</div>
+        </div>
+        {% endfor %}
+        <a href="/notifications" class="view-all"><i class="fa-solid fa-arrow-right"></i> View all notifications</a>
+    {% else %}
+        <p class="empty">No inquiries yet. Share your profile to get noticed!</p>
+    {% endif %}
+</div>
+</body>
+</html>

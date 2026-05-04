@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ artisan.name }} — Artisaan's Crib</title>
-    <meta name="description" content="{{ artisan.skill }} based in {{ artisan.location }}. Find and hire on Artisaan's Crib.">
+    <title>{{ artisan.name }} — {{ artisan.skill }} in {{ artisan.location }} | Artisaan's Crib</title>
+    <meta name="description" content="Hire {{ artisan.name }}, a skilled {{ artisan.skill }} based in {{ artisan.location }}, Nigeria. View portfolio, reviews and contact details on Artisaan's Crib.">
+    <meta property="og:title" content="{{ artisan.name }} — {{ artisan.skill }} | Artisaan's Crib">
+    <meta property="og:description" content="Hire {{ artisan.name }}, a {{ artisan.skill }} in {{ artisan.location }}. View portfolio and reviews.">
+    {% if artisan.image %}<meta property="og:image" content="{{ artisan.image }}">{% endif %}
+    <meta property="og:type" content="profile">
     <meta name="theme-color" content="#022f05">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/logo.jpeg">
@@ -394,7 +398,10 @@
     <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
     <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
     {% if session.user_id %}
-        <a href="/add-artisan"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+        <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
+        <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+        <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     {% else %}
         <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
@@ -425,6 +432,7 @@
             {% if artisan.phone %}
             <span><i class="fa-solid fa-phone"></i> {{ artisan.phone }}</span>
             {% endif %}
+            <span title="Profile views"><i class="fa-solid fa-eye"></i> {{ artisan.view_count or 0 }} view{{ 's' if (artisan.view_count or 0) != 1 }}</span>
         </div>
         <div class="star-row">
             {% set full_stars = average_rating|int %}

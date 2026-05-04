@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find an Artisan — Artisaan's Crib</title>
+    <title>Find Skilled Artisans in Nigeria — Artisaan's Crib</title>
+    <meta name="description" content="Find and hire skilled artisans in Nigeria. Search tailors, plumbers, carpenters, electricians and more on Artisaan's Crib.">
+    <meta property="og:title" content="Find Skilled Artisans in Nigeria — Artisaan's Crib">
+    <meta property="og:description" content="Hire skilled artisans near you. Tailors, plumbers, electricians and more.">
+    <meta property="og:type" content="website">
     <meta name="theme-color" content="#022f05">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/logo.jpeg">
@@ -56,6 +60,17 @@
         .no-result { text-align: center; padding: 60px 20px; color: rgba(255,248,220,0.5); font-size: 18px; }
         .no-result i { font-size: 48px; color: rgba(196,155,58,0.3); display: block; margin-bottom: 16px; }
 
+        .controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+        .sort-wrap { display: flex; align-items: center; gap: 8px; font-size: 14px; color: rgba(255,248,220,0.6); }
+        .sort-wrap select { background: rgba(255,255,255,0.07); border: 1px solid rgba(196,155,58,0.3); color: #fff8dc; border-radius: 20px; padding: 7px 14px; font-size: 14px; outline: none; cursor: pointer; }
+        .sort-wrap select option { background: #022f05; }
+
+        .pagination { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 40px; padding-bottom: 20px; }
+        .page-btn { padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(196,155,58,0.3); background: rgba(255,255,255,0.05); color: #fff8dc; font-size: 14px; cursor: pointer; text-decoration: none; transition: background 0.2s, border-color 0.2s; }
+        .page-btn:hover { background: rgba(196,155,58,0.15); border-color: rgba(196,155,58,0.5); }
+        .page-btn.active { background: #c49b3a; color: #022f05; font-weight: 800; border-color: #c49b3a; }
+        .page-btn.disabled { opacity: 0.35; pointer-events: none; }
+
         @media(max-width:600px) { nav { padding: 14px 16px; gap: 12px; } .page-header { padding: 32px 20px 24px; } .page-header h1 { font-size: 26px; } }
     </style>
 </head>
@@ -66,6 +81,8 @@
     <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
     {% if session.user_id %}
         <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+        <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
+        <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
         <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
         <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
@@ -89,8 +106,20 @@
 </div>
 
 <div class="grid-wrap">
+    {% if artisans or search %}
+    <div class="controls">
+        <p class="result-info" style="margin:0;">{{ total }} artisan{{ 's' if total != 1 }} found{% if search %} for "{{ search }}"{% endif %}</p>
+        <div class="sort-wrap">
+            <i class="fa-solid fa-arrow-up-wide-short"></i> Sort by:
+            <select onchange="location.href=this.value">
+                <option value="?search={{ search }}&sort=newest&page=1" {% if sort=='newest' %}selected{% endif %}>Newest</option>
+                <option value="?search={{ search }}&sort=rating&page=1" {% if sort=='rating' %}selected{% endif %}>Top Rated</option>
+                <option value="?search={{ search }}&sort=views&page=1"  {% if sort=='views'  %}selected{% endif %}>Most Viewed</option>
+            </select>
+        </div>
+    </div>
+    {% endif %}
     {% if artisans %}
-    <p class="result-info">{{ artisans|length }} artisan{{ 's' if artisans|length != 1 }} found{% if search %} for "{{ search }}"{% endif %}</p>
     <div class="artisan-grid">
         {% for artisan in artisans %}
         <a href="/artisan/{{ artisan.id }}" class="artisan-card">
@@ -127,6 +156,32 @@
         </a>
         {% endfor %}
     </div>
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+            <a href="?search={{ search }}&sort={{ sort }}&page={{ page - 1 }}" class="page-btn"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+        {% else %}
+            <span class="page-btn disabled"><i class="fa-solid fa-chevron-left"></i> Prev</span>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+                <span class="page-btn active">{{ p }}</span>
+            {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                <a href="?search={{ search }}&sort={{ sort }}&page={{ p }}" class="page-btn">{{ p }}</a>
+            {% elif p == page - 3 or p == page + 3 %}
+                <span class="page-btn disabled">…</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+            <a href="?search={{ search }}&sort={{ sort }}&page={{ page + 1 }}" class="page-btn">Next <i class="fa-solid fa-chevron-right"></i></a>
+        {% else %}
+            <span class="page-btn disabled">Next <i class="fa-solid fa-chevron-right"></i></span>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% else %}
     <div class="no-result">
         <i class="fa-solid fa-magnifying-glass"></i>

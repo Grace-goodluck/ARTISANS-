@@ -236,6 +236,7 @@ def create_table():
     for col, definition in [
         ("verified", "INTEGER DEFAULT 0"),
         ("user_id", "INTEGER"),
+        ("view_count", "INTEGER DEFAULT 0"),
     ]:
         try:
             db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
@@ -288,6 +289,17 @@ def home():
 @app.route("/artisans")
 def artisans():
     search = request.args.get('search', '').strip()
+    sort   = request.args.get('sort', 'newest')
+    page   = max(1, int(request.args.get('page', 1)))
+    per_page = 12
+
+    sort_map = {
+        'newest':  'a.id DESC',
+        'rating':  'avg_rating DESC',
+        'views':   'a.view_count DESC',
+    }
+    order = sort_map.get(sort, 'a.id DESC')
+
     conn = get_db_connection()
     rating_sql = """
         SELECT a.*,
@@ -295,19 +307,31 @@ def artisans():
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
         FROM artisans a
     """
+    base_where = " WHERE a.name IS NOT NULL AND a.name != ''"
     if search:
         op = "ILIKE" if DATABASE_URL else "LIKE"
         like = '%' + search + '%'
-        rows = db_execute(conn,
-            rating_sql + f" WHERE (a.skill {op} ? OR a.location {op} ? OR a.name {op} ?) AND a.name IS NOT NULL AND a.name != '' ORDER BY a.id DESC",
-            (like, like, like)
-        ).fetchall()
+        where = f" WHERE (a.skill {op} ? OR a.location {op} ? OR a.name {op} ?) AND a.name IS NOT NULL AND a.name != ''"
+        all_rows = db_execute(conn, rating_sql + where, (like, like, like)).fetchall()
     else:
-        rows = db_execute(conn,
-            rating_sql + " WHERE a.name IS NOT NULL AND a.name != '' ORDER BY a.id DESC"
-        ).fetchall()
+        all_rows = db_execute(conn, rating_sql + base_where).fetchall()
+
+    # sort in Python (works for both SQLite and PostgreSQL without complex SQL)
+    if sort == 'rating':
+        all_rows = sorted(all_rows, key=lambda r: float(r['avg_rating'] or 0), reverse=True)
+    elif sort == 'views':
+        all_rows = sorted(all_rows, key=lambda r: int(r['view_count'] or 0), reverse=True)
+    else:
+        all_rows = sorted(all_rows, key=lambda r: int(r['id']), reverse=True)
+
+    total = len(all_rows)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    rows = all_rows[(page-1)*per_page : page*per_page]
+
     conn.close()
-    return render_template("artisans.html", artisans=rows, search=search)
+    return render_template("artisans.html", artisans=rows, search=search, sort=sort,
+                           page=page, total_pages=total_pages, total=total)
 
 
 @app.route("/add-artisan", methods=["GET", "POST"])
@@ -487,6 +511,12 @@ def artisan_profile(id):
         return render_template('404.html'), 404
     artisan = dict(artisan_row)
 
+    # increment view count (skip if viewer is the artisan owner)
+    if session.get('user_id') != artisan.get('user_id'):
+        db_execute(conn, "UPDATE artisans SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?", (id,))
+        conn.commit()
+        artisan['view_count'] = int(artisan.get('view_count') or 0) + 1
+
     reviews   = db_execute(conn, "SELECT * FROM reviews WHERE artisan_id=? ORDER BY created_at DESC", (id,)).fetchall()
     portfolio = db_execute(conn, "SELECT image FROM portfolios WHERE artisan_id=?", (id,)).fetchall()
     is_bookmarked = False
@@ -503,6 +533,41 @@ def artisan_profile(id):
         artisan=artisan, reviews=reviews,
         average_rating=average_rating, review_count=review_count,
         portfolio=portfolio, is_bookmarked=is_bookmarked, contacted=contacted)
+
+
+@app.route('/notifications')
+def notifications():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    my_artisan = db_execute(conn, "SELECT id, name FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    if not my_artisan:
+        conn.close()
+        return render_template('notifications.html', messages=[], reviews=[], my_artisan=None)
+    msgs    = db_execute(conn, "SELECT * FROM messages WHERE artisan_id=? ORDER BY created_at DESC", (my_artisan['id'],)).fetchall()
+    reviews = db_execute(conn, "SELECT * FROM reviews WHERE artisan_id=? ORDER BY created_at DESC", (my_artisan['id'],)).fetchall()
+    conn.close()
+    return render_template('notifications.html', messages=msgs, reviews=reviews, my_artisan=my_artisan)
+
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    my_artisan = db_execute(conn, "SELECT * FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    if not my_artisan:
+        conn.close()
+        return redirect(url_for('add_artisan'))
+    artisan    = dict(my_artisan)
+    msg_count  = db_execute(conn, "SELECT COUNT(*) as c FROM messages WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    rev_count  = db_execute(conn, "SELECT COUNT(*) as c FROM reviews  WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    avg_row    = db_execute(conn, "SELECT COALESCE(AVG(rating),0) as avg FROM reviews WHERE artisan_id=?", (artisan['id'],)).fetchone()
+    avg_rating = round(float(avg_row['avg'] or 0), 1)
+    recent_msgs = db_execute(conn, "SELECT * FROM messages WHERE artisan_id=? ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
+    conn.close()
+    return render_template('dashboard.html', artisan=artisan, msg_count=msg_count,
+                           review_count=rev_count, avg_rating=avg_rating, recent_msgs=recent_msgs)
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications — Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+
+        nav { display: flex; align-items: center; gap: 20px; padding: 16px 40px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); position: sticky; top: 0; z-index: 100; }
+        nav .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff8dc; text-decoration: none; margin-right: auto; }
+        nav .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; transition: opacity 0.2s; }
+        nav a:hover { opacity: 1; color: #c49b3a; }
+
+        .wrap { max-width: 800px; margin: 0 auto; padding: 40px 24px 80px; }
+        h1 { font-size: 26px; font-weight: 900; color: #fff8dc; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 14px; margin-bottom: 36px; }
+
+        .tab-row { display: flex; gap: 12px; margin-bottom: 28px; border-bottom: 1px solid rgba(196,155,58,0.15); padding-bottom: 0; }
+        .tab { padding: 10px 20px; border-bottom: 3px solid transparent; cursor: pointer; font-size: 14px; font-weight: 700; color: rgba(255,248,220,0.5); transition: color 0.2s; }
+        .tab.active { color: #c49b3a; border-bottom-color: #c49b3a; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .notif-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+        .notif-card .meta { font-size: 12px; color: rgba(255,248,220,0.4); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .notif-card .meta i { color: #c49b3a; }
+        .notif-name { font-size: 15px; font-weight: 700; color: #fff8dc; margin-bottom: 4px; }
+        .notif-phone { font-size: 13px; color: rgba(255,248,220,0.55); margin-bottom: 8px; }
+        .notif-msg { font-size: 14px; color: rgba(255,248,220,0.8); line-height: 1.6; }
+        .star-row { color: #c49b3a; font-size: 14px; margin-bottom: 6px; }
+        .empty { text-align: center; padding: 50px 20px; color: rgba(255,248,220,0.4); font-size: 15px; }
+        .empty i { font-size: 40px; display: block; margin-bottom: 12px; color: rgba(196,155,58,0.3); }
+
+        .no-artisan { text-align: center; padding: 60px 20px; }
+        .no-artisan p { color: rgba(255,248,220,0.5); margin-bottom: 18px; }
+        .no-artisan a { background: #c49b3a; color: #022f05; padding: 12px 24px; border-radius: 30px; font-weight: 800; text-decoration: none; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand"><img src="/static/logo.jpeg" alt="Logo"> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+    <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
+    <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+    <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+</nav>
+
+<div class="wrap">
+    <h1><i class="fa-solid fa-bell"></i> Notifications</h1>
+
+    {% if not my_artisan %}
+    <div class="no-artisan">
+        <p>You don't have an artisan profile yet. Register as an artisan to receive inquiries and reviews.</p>
+        <a href="/add-artisan"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+    </div>
+    {% else %}
+    <p class="sub">Showing notifications for <strong>{{ my_artisan.name }}</strong></p>
+
+    <div class="tab-row">
+        <div class="tab active" onclick="switchTab('msgs', this)"><i class="fa-solid fa-envelope"></i> Messages ({{ messages|length }})</div>
+        <div class="tab" onclick="switchTab('revs', this)"><i class="fa-solid fa-star"></i> Reviews ({{ reviews|length }})</div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="tab-msgs" class="tab-panel active">
+        {% if messages %}
+            {% for m in messages %}
+            <div class="notif-card">
+                <div class="meta"><i class="fa-solid fa-envelope"></i> Inquiry · {{ m.created_at }}</div>
+                <div class="notif-name">{{ m.sender_name }}</div>
+                <div class="notif-phone"><i class="fa-solid fa-phone" style="color:#c49b3a;"></i> {{ m.sender_phone }}</div>
+                <div class="notif-msg">{{ m.message }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty"><i class="fa-solid fa-envelope-open"></i> No inquiries yet.</div>
+        {% endif %}
+    </div>
+
+    <!-- REVIEWS -->
+    <div id="tab-revs" class="tab-panel">
+        {% if reviews %}
+            {% for r in reviews %}
+            <div class="notif-card">
+                <div class="meta"><i class="fa-solid fa-star"></i> Review · {{ r.created_at }}</div>
+                <div class="star-row">
+                    {% for i in range(r.rating) %}<i class="fa-solid fa-star"></i>{% endfor %}
+                    {% for i in range(5 - r.rating) %}<i class="fa-regular fa-star"></i>{% endfor %}
+                </div>
+                <div class="notif-msg">{{ r.comment }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty"><i class="fa-solid fa-star"></i> No reviews yet.</div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function switchTab(id, el) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    el.classList.add('active');
+}
+</script>
+</body>
+</html>
