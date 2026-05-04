@@ -349,6 +349,7 @@
     </button>
     <div class="nav-links" id="nav-links">
         <a href="/artisans"><i class="fa-solid fa-magnifying-glass"></i> Find a Professional</a>
+        <a href="/map"><i class="fa-solid fa-map-location-dot"></i> Map View</a>
         <a href="/requests"><i class="fa-solid fa-list-check"></i> Browse Requests</a>
         <a href="/request-service"><i class="fa-solid fa-pen-to-square"></i> Request a Service</a>
         {% if session.user_id %}
@@ -511,13 +512,21 @@
 
 <!-- BROWSE BY CATEGORY -->
 {% if categories %}
-<div class="section">
-    <h2 class="section-title">Browse by Service</h2>
-    <p class="section-sub">Tap a category to find professionals offering that service.</p>
-    <div class="categories-wrap">
+<div class="section" style="background:#fff;">
+    <h2 class="section-title" style="color:#022f05;text-align:center;">Browse by Service</h2>
+    <p class="section-sub" style="color:#666;text-align:center;margin-bottom:28px;">Tap a category to find professionals offering that service.</p>
+    <div style="max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;padding:0 20px;">
+        {% set icons = {'Tailor':'fa-scissors','Developer':'fa-code','Nurse':'fa-user-nurse','Plumber':'fa-wrench','Electrician':'fa-bolt','Carpenter':'fa-hammer','Photographer':'fa-camera','Makeup Artist':'fa-wand-magic-sparkles','Teacher':'fa-chalkboard-teacher','Driver':'fa-car','Mechanic':'fa-car-burst','Barber':'fa-cut','Painter':'fa-paint-roller','Chef':'fa-utensils','Cleaner':'fa-broom','Welder':'fa-fire'} %}
         {% for cat in categories %}
-        <a href="/artisans?search={{ cat.skill }}" class="cat-pill"><i class="fa-solid fa-hammer"></i> {{ cat.skill }}</a>
+        <a href="/artisans?search={{ cat.skill }}" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#f9f9f7;border:1px solid rgba(196,155,58,0.25);border-radius:14px;padding:20px 12px;text-decoration:none;color:#022f05;font-size:13px;font-weight:700;text-align:center;transition:transform 0.15s,box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+            <span style="width:48px;height:48px;background:rgba(196,155,58,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#c49b3a;font-size:20px;"><i class="fa-solid {{ icons.get(cat.skill, 'fa-star') }}"></i></span>
+            {{ cat.skill }}
+        </a>
         {% endfor %}
+        <a href="/artisans" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:rgba(196,155,58,0.08);border:1px dashed rgba(196,155,58,0.4);border-radius:14px;padding:20px 12px;text-decoration:none;color:#c49b3a;font-size:13px;font-weight:700;text-align:center;">
+            <span style="width:48px;height:48px;background:rgba(196,155,58,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;"><i class="fa-solid fa-ellipsis"></i></span>
+            View All
+        </a>
     </div>
 </div>
 {% endif %}

@@ -148,6 +148,25 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def send_email(to_email, subject, body):
+    mail_user = os.environ.get('MAIL_USER')
+    mail_pass = os.environ.get('MAIL_PASS')
+    if not mail_user or not mail_pass or not to_email:
+        return
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['Subject'] = subject
+        msg['From'] = mail_user
+        msg['To'] = to_email
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
+            s.login(mail_user, mail_pass)
+            s.send_message(msg)
+    except Exception:
+        pass
+
+
 def profile_completion(artisan):
     fields = ['name','email','skill','location','phone','description',
               'image','experience','certifications','availability',
@@ -312,12 +331,41 @@ def create_table():
             try: conn.rollback()
             except: pass
 
-    try:
-        db_execute(conn, "ALTER TABLE artisans ADD COLUMN business_hours TEXT")
-        conn.commit()
-    except Exception:
-        try: conn.rollback()
-        except: pass
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS bookings (
+            id {PK},
+            artisan_id INTEGER,
+            client_name TEXT,
+            client_phone TEXT,
+            client_email TEXT,
+            service_date TEXT,
+            note TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    for col, definition in [
+        ("business_hours", "TEXT"),
+        ("photo_url", "TEXT"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
+    for col, definition in [
+        ("photo_url", "TEXT"),
+        ("reviewer_name", "TEXT"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE reviews ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
 
     conn.commit()
     conn.close()
@@ -372,6 +420,8 @@ def artisans():
     search          = request.args.get('search', '').strip()
     sort            = request.args.get('sort', 'newest')
     location_filter = request.args.get('location', '').strip()
+    rating_filter   = request.args.get('rating', '').strip()
+    avail_filter    = request.args.get('avail', '').strip()
     page            = max(1, int(request.args.get('page', 1)))
     per_page        = 12
 
@@ -394,6 +444,16 @@ def artisans():
     if location_filter:
         conditions.append(f"a.location {op} ?")
         params.append('%' + location_filter + '%')
+
+    if rating_filter:
+        conditions.append(
+            "(SELECT COALESCE(AVG(r.rating),0) FROM reviews r WHERE r.artisan_id=a.id) >= ?"
+        )
+        params.append(float(rating_filter))
+
+    if avail_filter in ('0', '1'):
+        conditions.append("COALESCE(a.is_available, 1) = ?")
+        params.append(int(avail_filter))
 
     where = " WHERE " + " AND ".join(conditions)
     all_rows = db_execute(conn, rating_sql + where, tuple(params)).fetchall()
@@ -422,10 +482,15 @@ def artisans():
         if r['location'] and ',' in r['location']
     ))
 
+    skills = db_execute(conn, "SELECT DISTINCT skill FROM artisans WHERE skill IS NOT NULL AND skill != '' ORDER BY skill").fetchall()
+    skill_list = [r['skill'] for r in skills]
+
     conn.close()
     return render_template("artisans.html", artisans=rows, search=search, sort=sort,
                            page=page, total_pages=total_pages, total=total,
-                           location_filter=location_filter, states=states)
+                           location_filter=location_filter, states=states,
+                           rating_filter=rating_filter, avail_filter=avail_filter,
+                           skill_list=skill_list)
 
 
 @app.route("/add-artisan", methods=["GET", "POST"])
@@ -594,10 +659,24 @@ def artisan_profile(id):
     conn = get_db_connection()
 
     if request.method == 'POST':
-        db_execute(conn, "INSERT INTO reviews (artisan_id, rating, comment) VALUES (?, ?, ?)",
-                   (id, request.form['rating'], request.form['comment']))
+        photo_url = None
+        photo = request.files.get('review_photo')
+        if photo and photo.filename and allowed_file(photo.filename):
+            photo_url = upload_image(photo)
+        reviewer_name = request.form.get('reviewer_name', '').strip()
+        db_execute(conn,
+            "INSERT INTO reviews (artisan_id, rating, comment, reviewer_name, photo_url) VALUES (?, ?, ?, ?, ?)",
+            (id, request.form['rating'], request.form['comment'], reviewer_name, photo_url))
         conn.commit()
+        artisan_row = db_execute(conn, "SELECT name, email FROM artisans WHERE id=?", (id,)).fetchone()
         conn.close()
+        if artisan_row and artisan_row.get('email'):
+            send_email(
+                artisan_row['email'],
+                f"New review on Artisaan's Crib",
+                f"Hello {artisan_row['name']},\n\nYou received a new {request.form['rating']}-star review on Artisaan's Crib.\n\n"
+                f"View it: https://artisans-crib.vercel.app/artisan/{id}"
+            )
         return redirect(url_for('artisan_profile', id=id))
 
     artisan_row = db_execute(conn, "SELECT * FROM artisans WHERE id = ?", (id,)).fetchone()
@@ -626,16 +705,20 @@ def artisan_profile(id):
 
     review_count   = len(reviews)
     average_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
+    replied_count  = sum(1 for r in reviews if r.get('reply'))
+    response_rate  = int(replied_count * 100 / review_count) if review_count > 0 else None
     contacted  = request.args.get('contacted') == '1'
     reported   = request.args.get('reported') == '1'
     completion = profile_completion(artisan)
+    saves_count = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE artisan_id=?", (id,)).fetchone()['c']
 
     return render_template('artisan_profile_new.html',
         artisan=artisan, reviews=reviews,
         average_rating=average_rating, review_count=review_count,
         portfolio=portfolio, is_bookmarked=is_bookmarked,
         contacted=contacted, reported=reported,
-        completion=completion, related=related)
+        completion=completion, related=related,
+        response_rate=response_rate, saves_count=saves_count)
 
 
 @app.route('/api/suggestions')
@@ -702,14 +785,19 @@ def dashboard():
         conn.close()
         return redirect(url_for('add_artisan'))
     artisan    = dict(my_artisan)
-    msg_count  = db_execute(conn, "SELECT COUNT(*) as c FROM messages WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
-    rev_count  = db_execute(conn, "SELECT COUNT(*) as c FROM reviews  WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
-    avg_row    = db_execute(conn, "SELECT COALESCE(AVG(rating),0) as avg FROM reviews WHERE artisan_id=?", (artisan['id'],)).fetchone()
-    avg_rating = round(float(avg_row['avg'] or 0), 1)
+    msg_count   = db_execute(conn, "SELECT COUNT(*) as c FROM messages WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    rev_count   = db_execute(conn, "SELECT COUNT(*) as c FROM reviews  WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    saves_count = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    book_count  = db_execute(conn, "SELECT COUNT(*) as c FROM bookings WHERE artisan_id=? AND status='pending'", (artisan['id'],)).fetchone()['c']
+    avg_row     = db_execute(conn, "SELECT COALESCE(AVG(rating),0) as avg FROM reviews WHERE artisan_id=?", (artisan['id'],)).fetchone()
+    avg_rating  = round(float(avg_row['avg'] or 0), 1)
+    replied     = db_execute(conn, "SELECT COUNT(*) as c FROM reviews WHERE artisan_id=? AND reply IS NOT NULL AND reply != ''", (artisan['id'],)).fetchone()['c']
+    response_rate = int(replied * 100 / rev_count) if rev_count > 0 else None
     recent_msgs = db_execute(conn, "SELECT * FROM messages WHERE artisan_id=? ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
     conn.close()
     return render_template('dashboard.html', artisan=artisan, msg_count=msg_count,
-                           review_count=rev_count, avg_rating=avg_rating, recent_msgs=recent_msgs)
+                           review_count=rev_count, avg_rating=avg_rating, recent_msgs=recent_msgs,
+                           saves_count=saves_count, book_count=book_count, response_rate=response_rate)
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])
@@ -918,11 +1006,23 @@ def saved_artisans():
 
 @app.route('/artisan/<int:id>/message', methods=['POST'])
 def send_message(id):
+    sender_name  = request.form.get('sender_name', '')
+    sender_phone = request.form.get('sender_phone', '')
+    message      = request.form.get('message', '')
     conn = get_db_connection()
     db_execute(conn, "INSERT INTO messages (artisan_id, sender_name, sender_phone, message) VALUES (?,?,?,?)",
-        (id, request.form.get('sender_name',''), request.form.get('sender_phone',''), request.form.get('message','')))
+        (id, sender_name, sender_phone, message))
     conn.commit()
+    artisan = db_execute(conn, "SELECT name, email FROM artisans WHERE id=?", (id,)).fetchone()
     conn.close()
+    if artisan and artisan.get('email'):
+        send_email(
+            artisan['email'],
+            f"New inquiry on Artisaan's Crib from {sender_name}",
+            f"Hello {artisan['name']},\n\nYou have a new inquiry on Artisaan's Crib.\n\n"
+            f"From: {sender_name}\nPhone: {sender_phone}\nMessage:\n{message}\n\n"
+            f"Log in to view it: https://artisans-crib.vercel.app/notifications"
+        )
     return redirect(url_for('artisan_profile', id=id) + '?contacted=1')
 
 
@@ -1082,6 +1182,121 @@ def delete_report(report_id):
     conn.commit()
     conn.close()
     return redirect(url_for('admin_reports'))
+
+
+@app.route('/book/<int:id>', methods=['GET', 'POST'])
+def book_artisan(id):
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
+    if artisan is None:
+        conn.close()
+        return render_template('404.html'), 404
+    if request.method == 'POST':
+        client_name  = request.form.get('client_name', '').strip()
+        client_phone = request.form.get('client_phone', '').strip()
+        client_email = request.form.get('client_email', '').strip()
+        service_date = request.form.get('service_date', '').strip()
+        note         = request.form.get('note', '').strip()
+        db_execute(conn,
+            "INSERT INTO bookings (artisan_id, client_name, client_phone, client_email, service_date, note) VALUES (?,?,?,?,?,?)",
+            (id, client_name, client_phone, client_email, service_date, note))
+        conn.commit()
+        artisan = dict(artisan)
+        conn.close()
+        if artisan.get('email'):
+            send_email(
+                artisan['email'],
+                f"New booking request on Artisaan's Crib",
+                f"Hello {artisan['name']},\n\nYou have a new booking request.\n\n"
+                f"From: {client_name}\nPhone: {client_phone}\nDate: {service_date}\nNote: {note}\n\n"
+                f"Log in to manage it: https://artisans-crib.vercel.app/dashboard"
+            )
+        return redirect(url_for('artisan_profile', id=id) + '?booked=1')
+    conn.close()
+    return render_template('book.html', artisan=artisan)
+
+
+@app.route('/my-bookings')
+def my_bookings():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    bookings = []
+    if my_artisan:
+        bookings = db_execute(conn, """
+            SELECT b.*, a.name as artisan_name, a.skill as artisan_skill, a.image as artisan_image
+            FROM bookings b JOIN artisans a ON a.id=b.artisan_id
+            WHERE b.artisan_id=? ORDER BY b.created_at DESC
+        """, (my_artisan['id'],)).fetchall()
+    conn.close()
+    return render_template('my_bookings.html', bookings=bookings)
+
+
+@app.route('/booking/<int:booking_id>/status', methods=['POST'])
+def update_booking_status(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    status = request.form.get('status', '')
+    if status not in ('pending', 'confirmed', 'declined', 'completed'):
+        return redirect(url_for('my_bookings'))
+    conn = get_db_connection()
+    db_execute(conn, "UPDATE bookings SET status=? WHERE id=?", (status, booking_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('my_bookings'))
+
+
+@app.route('/compare')
+def compare():
+    ids_param = request.args.get('ids', '')
+    if not ids_param:
+        return render_template('compare.html', artisans=[], ids='')
+    try:
+        ids = [int(i) for i in ids_param.split(',') if i.strip().isdigit()][:3]
+    except ValueError:
+        ids = []
+    artisans = []
+    if ids:
+        conn = get_db_connection()
+        placeholders = ','.join(['?' for _ in ids])
+        rows = db_execute(conn, f"""
+            SELECT a.*,
+                COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count,
+                COALESCE((SELECT COUNT(*) FROM bookmarks bm WHERE bm.artisan_id=a.id), 0) as saves_count
+            FROM artisans a WHERE a.id IN ({placeholders})
+        """, tuple(ids)).fetchall()
+        conn.close()
+        id_order = {v: i for i, v in enumerate(ids)}
+        artisans = sorted(rows, key=lambda r: id_order.get(r['id'], 99))
+    return render_template('compare.html', artisans=artisans, ids=ids_param)
+
+
+@app.route('/map')
+def map_view():
+    conn = get_db_connection()
+    rows = db_execute(conn, """
+        SELECT id, name, skill, location, image, is_available,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a WHERE name IS NOT NULL AND name != '' AND location IS NOT NULL AND location != ''
+    """).fetchall()
+    conn.close()
+    return render_template('map.html', artisans=rows)
+
+
+@app.route('/dashboard/toggle-availability', methods=['POST'])
+def dashboard_toggle_availability():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT id, is_available FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    if a:
+        db_execute(conn, "UPDATE artisans SET is_available=? WHERE id=?", (0 if a['is_available'] else 1, a['id']))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('dashboard'))
 
 
 @app.errorhandler(500)

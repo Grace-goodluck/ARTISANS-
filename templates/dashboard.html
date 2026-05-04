@@ -83,6 +83,12 @@
         <div class="strip-actions">
             <a href="/artisan/{{ artisan.id }}" class="strip-btn">View Profile</a>
             <a href="/artisan/{{ artisan.id }}/edit" class="strip-btn primary"><i class="fa-solid fa-pen"></i> Edit</a>
+            <form method="POST" action="/dashboard/toggle-availability" style="display:inline;">
+                <button type="submit" class="strip-btn" style="cursor:pointer;border:none;">
+                    {% if artisan.is_available %}<i class="fa-solid fa-circle" style="color:#66dd66;font-size:10px;"></i> Available{% else %}<i class="fa-solid fa-circle" style="color:#ff7777;font-size:10px;"></i> Busy{% endif %}
+                </button>
+            </form>
+            <a href="/my-bookings" class="strip-btn"><i class="fa-solid fa-calendar-check"></i> Bookings{% if book_count %} <span style="background:#c49b3a;color:#022f05;border-radius:10px;padding:1px 7px;font-size:11px;">{{ book_count }}</span>{% endif %}</a>
         </div>
     </div>
 
@@ -107,6 +113,21 @@
             <div class="icon"><i class="fa-solid fa-ranking-star"></i></div>
             <div class="num">{{ avg_rating }}</div>
             <div class="lbl">Average Rating</div>
+        </div>
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-heart"></i></div>
+            <div class="num">{{ saves_count }}</div>
+            <div class="lbl">Profile Saves</div>
+        </div>
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-reply"></i></div>
+            <div class="num">{{ response_rate if response_rate is not none else 'N/A' }}{% if response_rate is not none %}%{% endif %}</div>
+            <div class="lbl">Response Rate</div>
+        </div>
+        <div class="stat">
+            <div class="icon"><i class="fa-solid fa-calendar-check"></i></div>
+            <div class="num">{{ book_count }}</div>
+            <div class="lbl">Pending Bookings</div>
         </div>
     </div>
 

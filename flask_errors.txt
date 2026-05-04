@@ -6,3 +6,18 @@ Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 131-785-232
+127.0.0.1 - - [22/Apr/2026 14:24:10] "GET /artisans HTTP/1.1" 200 -
+127.0.0.1 - - [22/Apr/2026 14:24:11] "POST /login HTTP/1.1" 200 -
+ * Detected change in 'C:\\Users\\DELL\\Desktop\\artisan-service-app\\app.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 131-785-232
+ * Detected change in 'C:\\Users\\DELL\\Desktop\\artisan-service-app\\app.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 131-785-232
+ * Detected change in 'C:\\Users\\DELL\\Desktop\\artisan-service-app\\app.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 131-785-232
+ * Detected change in 'C:\\Users\\DELL\\Desktop\\artisan-service-app\\app.py', reloading

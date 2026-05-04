@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View | Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; display: flex; flex-direction: column; }
+        nav { display: flex; align-items: center; gap: 20px; padding: 14px 32px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); flex-shrink: 0; }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; }
+        nav a:hover { color: #c49b3a; opacity: 1; }
+        nav a:first-child { margin-right: auto; font-weight: 800; font-size: 17px; opacity: 1; }
+        .map-header { padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+        .map-header h1 { font-size: 20px; font-weight: 900; color: #c49b3a; }
+        .map-header p { font-size: 13px; color: rgba(255,248,220,0.5); }
+        #map { flex: 1; min-height: 70vh; width: 100%; }
+        .leaflet-popup-content-wrapper { background: #022f05; border: 1px solid rgba(196,155,58,0.4); border-radius: 12px; }
+        .leaflet-popup-content { color: #fff8dc; font-family: 'Segoe UI', Arial, sans-serif; margin: 12px 16px; }
+        .leaflet-popup-tip { background: #022f05; }
+        .popup-name { font-size: 15px; font-weight: 800; margin-bottom: 2px; }
+        .popup-skill { font-size: 12px; font-weight: 700; background: rgba(196,155,58,0.2); color: #c49b3a; padding: 2px 8px; border-radius: 12px; display: inline-block; margin-bottom: 8px; }
+        .popup-loc { font-size: 12px; color: rgba(255,248,220,0.55); margin-bottom: 8px; }
+        .popup-stars { color: #c49b3a; font-size: 12px; margin-bottom: 8px; }
+        .popup-btn { display: inline-block; background: #c49b3a; color: #022f05; font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 20px; text-decoration: none; }
+        .legend { position: absolute; bottom: 28px; right: 12px; z-index: 1000; background: rgba(2,47,5,0.9); border: 1px solid rgba(196,155,58,0.3); border-radius: 10px; padding: 12px 16px; font-size: 12px; color: rgba(255,248,220,0.7); }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> List View</a>
+</nav>
+<div class="map-header">
+    <div>
+        <h1><i class="fa-solid fa-map-location-dot"></i> Map View</h1>
+        <p>{{ artisans|length }} artisan{{ 's' if artisans|length != 1 }} on the map</p>
+    </div>
+    <a href="/artisans" style="color:#c49b3a;font-size:13px;font-weight:700;text-decoration:none;"><i class="fa-solid fa-list"></i> Switch to List</a>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var map = L.map('map').setView([9.0820, 8.6753], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 18
+}).addTo(map);
+
+// Static coordinates for major Nigerian cities/states
+var cityCoords = {
+    'Lagos': [6.5244, 3.3792], 'Abuja': [9.0579, 7.4951], 'Kano': [12.0022, 8.5920],
+    'Ibadan': [7.3776, 3.9470], 'Port Harcourt': [4.8156, 7.0498], 'Benin City': [6.3350, 5.6037],
+    'Maiduguri': [11.8333, 13.1500], 'Zaria': [11.0668, 7.7063], 'Aba': [5.1066, 7.3667],
+    'Onitsha': [6.1667, 6.7833], 'Warri': [5.5167, 5.7333], 'Enugu': [6.4584, 7.5464],
+    'Abeokuta': [7.1475, 3.3619], 'Sokoto': [13.0509, 5.2325], 'Kaduna': [10.5105, 7.4165],
+    'Calabar': [4.9517, 8.3220], 'Uyo': [5.0333, 7.9333], 'Jos': [9.9285, 8.8921],
+    'Ilorin': [8.4966, 4.5426], 'Owerri': [5.4836, 7.0333], 'Asaba': [6.2000, 6.7167],
+    'Akure': [7.2526, 5.1986], 'Bauchi': [10.3158, 9.8442], 'Minna': [9.6139, 6.5569],
+    'Makurdi': [7.7333, 8.5333], 'Yola': [9.2035, 12.4954], 'Lafia': [8.4833, 8.5167],
+    'Umuahia': [5.5333, 7.4833], 'Awka': [6.2104, 7.0686], 'Gusau': [12.1622, 6.6641],
+    'Osogbo': [7.7667, 4.5667], 'Abakaliki': [6.3248, 8.1136], 'Birnin Kebbi': [12.4540, 4.1997],
+    'Dutse': [11.7730, 9.3437], 'Gombe': [10.2791, 11.1670], 'Jalingo': [8.9000, 11.3667],
+    'Lokoja': [7.8035, 6.7352], 'Ado Ekiti': [7.6231, 5.2205], 'Damaturu': [11.7469, 11.9608]
+};
+
+var goldIcon = L.divIcon({
+    html: '<div style="width:14px;height:14px;border-radius:50%;background:#c49b3a;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
+    className: '', iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -10]
+});
+var busyIcon = L.divIcon({
+    html: '<div style="width:12px;height:12px;border-radius:50%;background:rgba(200,50,50,0.8);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
+    className: '', iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -8]
+});
+
+var artisans = {{ artisans|tojson }};
+var placed = 0;
+
+artisans.forEach(function(a) {
+    var loc = (a.location || '').toLowerCase();
+    var coords = null;
+    for (var city in cityCoords) {
+        if (loc.includes(city.toLowerCase())) {
+            coords = cityCoords[city];
+            break;
+        }
+    }
+    if (!coords) return;
+    var jitter = [(Math.random() - 0.5) * 0.18, (Math.random() - 0.5) * 0.18];
+    var avg = parseFloat(a.avg_rating || 0).toFixed(1);
+    var stars = '';
+    for (var i = 0; i < Math.round(parseFloat(avg)); i++) stars += '★';
+    for (var i = Math.round(parseFloat(avg)); i < 5; i++) stars += '☆';
+    var popupHtml = '<div class="popup-name">' + a.name + '</div>' +
+        '<div class="popup-skill">' + a.skill + '</div>' +
+        '<div class="popup-loc"><i class="fa fa-location-dot"></i> ' + a.location + '</div>' +
+        (parseFloat(avg) > 0 ? '<div class="popup-stars">' + stars + ' ' + avg + '</div>' : '') +
+        '<a href="/artisan/' + a.id + '" class="popup-btn">View Profile</a>';
+    L.marker([coords[0] + jitter[0], coords[1] + jitter[1]], {icon: a.is_available ? goldIcon : busyIcon})
+        .addTo(map)
+        .bindPopup(popupHtml);
+    placed++;
+});
+
+if (placed === 0) {
+    document.getElementById('map').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,248,220,0.4);font-size:16px;flex-direction:column;gap:12px;"><i class="fa-solid fa-map" style="font-size:48px;color:rgba(196,155,58,0.3);"></i>No artisan locations could be mapped yet.</div>';
+}
+</script>
+
+<!-- MOBILE BACK BUTTON -->
+<button onclick="history.back()" style="display:none;position:fixed;bottom:28px;left:20px;width:50px;height:50px;border-radius:50%;background:#c49b3a;color:#022f05;border:none;font-size:20px;cursor:pointer;z-index:2000;box-shadow:0 4px 18px rgba(0,0,0,0.35);align-items:center;justify-content:center;" id="mb-btn">
+    <i class="fa-solid fa-arrow-left"></i>
+</button>
+<script>
+if (window.innerWidth <= 768) document.getElementById('mb-btn').style.display = 'flex';
+</script>
+</body>
+</html>

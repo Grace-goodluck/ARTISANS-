@@ -133,9 +133,8 @@
     </form>
     <div id="suggestions-box" class="suggestions-box" style="display:none;"></div>
     <p class="search-hint">Search by service, professional name, or location</p>
-    {% if states %}
     <div class="filter-row">
-        <form method="GET" style="display:contents;">
+        <form method="GET" style="display:contents;" id="filter-form">
             <input type="hidden" name="search" value="{{ search }}">
             <input type="hidden" name="sort" value="{{ sort }}">
             <select name="location" class="filter-select" onchange="this.form.submit()">
@@ -144,9 +143,25 @@
                 <option value="{{ state }}" {% if location_filter == state %}selected{% endif %}>{{ state }}</option>
                 {% endfor %}
             </select>
+            <select name="rating" class="filter-select" onchange="this.form.submit()">
+                <option value="">Any Rating</option>
+                <option value="4" {% if rating_filter == '4' %}selected{% endif %}>4+ Stars</option>
+                <option value="3" {% if rating_filter == '3' %}selected{% endif %}>3+ Stars</option>
+                <option value="2" {% if rating_filter == '2' %}selected{% endif %}>2+ Stars</option>
+            </select>
+            <select name="avail" class="filter-select" onchange="this.form.submit()">
+                <option value="">All Availability</option>
+                <option value="1" {% if avail_filter == '1' %}selected{% endif %}>Available Now</option>
+                <option value="0" {% if avail_filter == '0' %}selected{% endif %}>Busy</option>
+            </select>
         </form>
+        {% if rating_filter or avail_filter or location_filter %}
+        <a href="/artisans?search={{ search }}" style="color:#c49b3a;font-size:13px;text-decoration:none;white-space:nowrap;"><i class="fa-solid fa-xmark"></i> Clear filters</a>
+        {% endif %}
     </div>
-    {% endif %}
+
+    <!-- SEARCH HISTORY -->
+    <div id="search-history" style="display:none;margin-top:10px;"></div>
 </div>
 
 <script>
@@ -175,19 +190,102 @@ function selectSuggestion(val) {
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.search-wrap')) document.getElementById('suggestions-box').style.display = 'none';
 });
+
+// Search history
+(function(){
+    var histEl = document.getElementById('search-history');
+    var search = {{ search|tojson }};
+    if (search) {
+        var history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        history = history.filter(function(s){ return s !== search; });
+        history.unshift(search);
+        if (history.length > 5) history = history.slice(0, 5);
+        localStorage.setItem('searchHistory', JSON.stringify(history));
+    }
+    var history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    if (history.length && !search) {
+        histEl.style.display = 'block';
+        histEl.innerHTML = '<span style="font-size:12px;color:rgba(255,248,220,0.4);margin-right:8px;">Recent:</span>' +
+            history.map(function(s){ return '<a href="/artisans?search='+encodeURIComponent(s)+'" style="display:inline-block;background:rgba(255,255,255,0.06);border:1px solid rgba(196,155,58,0.2);border-radius:20px;padding:4px 12px;font-size:12px;color:#fff8dc;text-decoration:none;margin:3px;">'+s+'</a>'; }).join('');
+    }
+})();
+
+// Compare
+var compareIds = JSON.parse(localStorage.getItem('compareIds') || '[]');
+function updateCompareBtn() {
+    var btn = document.getElementById('compare-btn');
+    document.getElementById('compare-count').textContent = compareIds.length;
+    if (compareIds.length > 1) {
+        btn.style.display = 'inline-flex';
+        btn.href = '/compare?ids=' + compareIds.join(',');
+    } else {
+        btn.style.display = 'none';
+    }
+    compareIds.forEach(function(id) {
+        var el = document.getElementById('cmp-' + id);
+        if (el) el.style.background = 'rgba(196,155,58,0.4)';
+    });
+}
+function toggleCompare(id, name) {
+    var idx = compareIds.indexOf(id);
+    if (idx === -1) {
+        if (compareIds.length >= 3) { alert('You can compare up to 3 artisans at a time.'); return; }
+        compareIds.push(id);
+    } else {
+        compareIds.splice(idx, 1);
+    }
+    localStorage.setItem('compareIds', JSON.stringify(compareIds));
+    updateCompareBtn();
+    var el = document.getElementById('cmp-' + id);
+    if (el) el.style.background = idx === -1 ? 'rgba(196,155,58,0.4)' : 'rgba(196,155,58,0.15)';
+}
+updateCompareBtn();
+</script>
+
+<!-- DARK MODE TOGGLE -->
+<button id="dark-toggle" onclick="toggleDark()" title="Toggle light/dark mode" style="position:fixed;bottom:28px;right:80px;width:46px;height:46px;border-radius:50%;background:rgba(196,155,58,0.2);border:1px solid rgba(196,155,58,0.4);color:#c49b3a;font-size:18px;cursor:pointer;z-index:1000;display:flex;align-items:center;justify-content:center;transition:background 0.2s;">
+    <i class="fa-solid fa-sun" id="dark-icon"></i>
+</button>
+<style>
+body.light-mode { background: #f5f5f0 !important; color: #222 !important; }
+body.light-mode nav { background: #fff !important; border-color: rgba(196,155,58,0.3) !important; }
+body.light-mode nav a { color: #222 !important; }
+body.light-mode .artisan-card { background: #fff !important; border-color: rgba(196,155,58,0.25) !important; color: #222 !important; }
+body.light-mode .card-name { color: #222 !important; }
+body.light-mode .card-location, body.light-mode .card-price { color: #666 !important; }
+body.light-mode .filter-select { background: #fff !important; color: #222 !important; }
+body.light-mode .sort-wrap select { background: #fff !important; color: #222 !important; }
+body.light-mode .page-header h1 { color: #022f05 !important; }
+body.light-mode .search-form { background: #fff !important; border-color: rgba(196,155,58,0.4) !important; }
+body.light-mode .search-form input { color: #222 !important; }
+</style>
+<script>
+function toggleDark() {
+    var isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('lightMode', isLight ? '1' : '0');
+    document.getElementById('dark-icon').className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+}
+if (localStorage.getItem('lightMode') === '1') {
+    document.body.classList.add('light-mode');
+    document.getElementById('dark-icon').className = 'fa-solid fa-moon';
+}
 </script>
 
 <div class="grid-wrap">
     {% if artisans or search %}
     <div class="controls">
         <p class="result-info" style="margin:0;">{{ total }} artisan{{ 's' if total != 1 }} found{% if search %} for "{{ search }}"{% endif %}</p>
-        <div class="sort-wrap">
-            <i class="fa-solid fa-arrow-up-wide-short"></i> Sort by:
-            <select onchange="location.href=this.value">
-                <option value="?search={{ search }}&sort=newest&page=1" {% if sort=='newest' %}selected{% endif %}>Newest</option>
-                <option value="?search={{ search }}&sort=rating&page=1" {% if sort=='rating' %}selected{% endif %}>Top Rated</option>
-                <option value="?search={{ search }}&sort=views&page=1"  {% if sort=='views'  %}selected{% endif %}>Most Viewed</option>
-            </select>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div class="sort-wrap">
+                <i class="fa-solid fa-arrow-up-wide-short"></i> Sort:
+                <select onchange="location.href=this.value">
+                    <option value="?search={{ search }}&sort=newest&location={{ location_filter }}&rating={{ rating_filter }}&avail={{ avail_filter }}&page=1" {% if sort=='newest' %}selected{% endif %}>Newest</option>
+                    <option value="?search={{ search }}&sort=rating&location={{ location_filter }}&rating={{ rating_filter }}&avail={{ avail_filter }}&page=1" {% if sort=='rating' %}selected{% endif %}>Top Rated</option>
+                    <option value="?search={{ search }}&sort=views&location={{ location_filter }}&rating={{ rating_filter }}&avail={{ avail_filter }}&page=1"  {% if sort=='views'  %}selected{% endif %}>Most Viewed</option>
+                </select>
+            </div>
+            <a href="/compare?ids=" id="compare-btn" style="display:none;background:#c49b3a;color:#022f05;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:700;text-decoration:none;"><i class="fa-solid fa-code-compare"></i> Compare (<span id="compare-count">0</span>)</a>
+            <a href="/map" style="color:#c49b3a;font-size:13px;text-decoration:none;font-weight:700;"><i class="fa-solid fa-map-location-dot"></i> Map View</a>
         </div>
     </div>
     {% endif %}
@@ -230,8 +328,9 @@ document.addEventListener('click', function(e) {
                         <span class="count">No reviews</span>
                     {% endif %}
                 </div>
-                <div class="card-hire">
-                    <button class="hire-btn">View Profile</button>
+                <div class="card-hire" style="display:flex;gap:8px;">
+                    <button class="hire-btn" style="flex:1;">View Profile</button>
+                    <button class="compare-add-btn" onclick="event.preventDefault();toggleCompare({{ artisan.id }}, '{{ artisan.name|replace("'","") }}')" title="Add to Compare" style="background:rgba(196,155,58,0.15);border:1px solid rgba(196,155,58,0.3);color:#c49b3a;border-radius:30px;padding:10px 12px;font-size:13px;cursor:pointer;" id="cmp-{{ artisan.id }}"><i class="fa-solid fa-code-compare"></i></button>
                 </div>
             </div>
         </a>
