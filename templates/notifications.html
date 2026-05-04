@@ -112,5 +112,33 @@ function switchTab(id, el) {
     el.classList.add('active');
 }
 </script>
+
+<!-- MOBILE BACK BUTTON -->
+<button class="mobile-back-btn" onclick="history.back()" aria-label="Go back">
+    <i class="fa-solid fa-arrow-left"></i>
+</button>
+<style>
+.mobile-back-btn {
+    display: none;
+    position: fixed;
+    bottom: 28px;
+    left: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #c49b3a;
+    color: #022f05;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.mobile-back-btn:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,0.4); }
+@media(max-width: 768px) { .mobile-back-btn { display: flex; } }
+</style>
 </body>
 </html>
