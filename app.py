@@ -701,6 +701,7 @@ def artisan_profile(id):
     if 'user_id' in session:
         bm = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
         is_bookmarked = bool(bm)
+    saves_count = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE artisan_id=?", (id,)).fetchone()['c']
     conn.close()
 
     review_count   = len(reviews)
@@ -710,7 +711,6 @@ def artisan_profile(id):
     contacted  = request.args.get('contacted') == '1'
     reported   = request.args.get('reported') == '1'
     completion = profile_completion(artisan)
-    saves_count = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE artisan_id=?", (id,)).fetchone()['c']
 
     return render_template('artisan_profile_new.html',
         artisan=artisan, reviews=reviews,
