@@ -533,7 +533,7 @@
     <a href="tel:{{ artisan.phone }}" class="cta-btn btn-call">
         <i class="fa-solid fa-phone"></i> Call
     </a>
-    {% set wa_number = artisan.whatsapp if artisan.whatsapp else artisan.phone %}
+    {% set wa_number = (artisan.whatsapp if artisan.whatsapp else artisan.phone)|wa_number %}
     <a href="https://wa.me/{{ wa_number }}" class="cta-btn btn-whatsapp" target="_blank">
         <i class="fa-brands fa-whatsapp"></i> WhatsApp
     </a>

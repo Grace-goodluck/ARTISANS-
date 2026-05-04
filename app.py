@@ -11,8 +11,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import re as _re
+
 app = Flask(__name__, template_folder='templates')
 app.secret_key = os.environ.get("SECRET_KEY", "mysecretkey")
+
+@app.template_filter('wa_number')
+def wa_number_filter(number):
+    """Convert any Nigerian phone number to wa.me international format."""
+    if not number:
+        return ''
+    digits = _re.sub(r'[^\d]', '', str(number))
+    if digits.startswith('234'):
+        return digits
+    if digits.startswith('0') and len(digits) >= 10:
+        return '234' + digits[1:]
+    return digits
 
 # ── Cloudinary config ──────────────────────────────────────────────────────────
 cloudinary.config(
