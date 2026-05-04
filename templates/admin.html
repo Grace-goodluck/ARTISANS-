@@ -120,7 +120,7 @@
             <tbody>
             {% for m in msgs %}
             <tr>
-                <td>{{ m.artisan_name or '—' }}</td>
+                <td>{{ m.artisan_name or 'N/A' }}</td>
                 <td>{{ m.sender_name }}</td>
                 <td>{{ m.sender_phone }}</td>
                 <td class="msg-text">{{ m.message }}</td>

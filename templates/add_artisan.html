@@ -528,8 +528,8 @@
                     <label>Availability</label>
                     <select name="availability">
                         <option value="">Select availability</option>
-                        <option value="Full-time">Full-time</option>
-                        <option value="Part-time">Part-time</option>
+                        <option value="Full time">Full time</option>
+                        <option value="Part time">Part time</option>
                         <option value="Weekends only">Weekends only</option>
                         <option value="By appointment">By appointment</option>
                         <option value="Flexible">Flexible</option>
@@ -537,7 +537,7 @@
                 </div>
                 <div class="field">
                     <label>Price Range (per job/hr)</label>
-                    <input type="text" name="price_range" placeholder="e.g. ₦5,000 – ₦20,000">
+                    <input type="text" name="price_range" placeholder="e.g. ₦5,000 to ₦20,000">
                 </div>
                 <div class="field full">
                     <label>Do you accept custom orders?</label>
@@ -797,14 +797,14 @@
 
     function getVal(name) {
         const el = document.querySelector('[name="' + name + '"]');
-        if (!el) return '—';
-        if (el.type === 'file') return el.files.length ? el.files.length + ' file(s) selected' : '—';
-        return el.value || '—';
+        if (!el) return 'N/A';
+        if (el.type === 'file') return el.files.length ? el.files.length + ' file(s) selected' : 'N/A';
+        return el.value || 'N/A';
     }
 
     function getChecked(name) {
         const checked = [...document.querySelectorAll('[name="' + name + '"]:checked')].map(e => e.value);
-        return checked.length ? checked.join(', ') : '—';
+        return checked.length ? checked.join(', ') : 'N/A';
     }
 
     function submitForm() {
@@ -823,7 +823,7 @@
             ['Gender', getVal('gender')],
             ['Languages', getVal('languages')],
             ['Skill / Trade', getVal('skill')],
-            ['Experience', getVal('experience') + (getVal('experience') !== '—' ? ' years' : '')],
+            ['Experience', getVal('experience') + (getVal('experience') !== 'N/A' ? ' years' : '')],
             ['Certifications', getVal('certifications')],
             ['Availability', getVal('availability')],
             ['Price Range', getVal('price_range')],

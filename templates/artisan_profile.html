@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ artisan.name }} — Artisan Profile</title>
+    <title>{{ artisan.name }} | Artisan Profile</title>
     <!-- VERSION_GREEN_2024 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -538,7 +538,7 @@
             </div>
             {% endfor %}
         {% else %}
-            <p class="empty-text">No reviews yet — be the first!</p>
+            <p class="empty-text">No reviews yet. Be the first!</p>
         {% endif %}
     </div>
 
@@ -549,11 +549,11 @@
             <label>Rating</label>
             <select name="rating" required>
                 <option value="">Select a rating</option>
-                <option value="5">⭐⭐⭐⭐⭐ — Excellent (5)</option>
-                <option value="4">⭐⭐⭐⭐ — Very Good (4)</option>
-                <option value="3">⭐⭐⭐ — Good (3)</option>
-                <option value="2">⭐⭐ — Fair (2)</option>
-                <option value="1">⭐ — Poor (1)</option>
+                <option value="5">⭐⭐⭐⭐⭐ Excellent (5)</option>
+                <option value="4">⭐⭐⭐⭐ Very Good (4)</option>
+                <option value="3">⭐⭐⭐ Good (3)</option>
+                <option value="2">⭐⭐ Fair (2)</option>
+                <option value="1">⭐ Poor (1)</option>
             </select>
             <label>Comment</label>
             <textarea name="comment" rows="4" placeholder="Share your experience with this artisan..." required></textarea>

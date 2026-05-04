@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ artisan.name }} | {{ artisan.skill }} in {{ artisan.location }} | Artisaan's Crib</title>
     <meta name="description" content="Hire {{ artisan.name }}, a skilled {{ artisan.skill }} based in {{ artisan.location }}, Nigeria. View portfolio, reviews and contact details on Artisaan's Crib.">
-    <meta property="og:title" content="{{ artisan.name }} — {{ artisan.skill }} | Artisaan's Crib">
+    <meta property="og:title" content="{{ artisan.name }} | {{ artisan.skill }} | Artisaan's Crib">
     <meta property="og:description" content="Hire {{ artisan.name }}, a {{ artisan.skill }} in {{ artisan.location }}. View portfolio and reviews.">
     {% if artisan.image %}<meta property="og:image" content="{{ artisan.image }}">{% endif %}
     <meta property="og:type" content="profile">
@@ -535,7 +535,7 @@
         <i class="fa-solid fa-envelope"></i> Email
     </a>
     {% endif %}
-    <a href="https://wa.me/?text={{ (artisan.name + ' — ' + artisan.skill + ' in ' + (artisan.location or '') + '. View profile: ')|urlencode }}{{ request.url|urlencode }}" target="_blank" class="cta-btn" style="background:#25D366;color:white;">
+    <a href="https://wa.me/?text={{ (artisan.name + ', ' + artisan.skill + ' in ' + (artisan.location or '') + '. View profile: ')|urlencode }}{{ request.url|urlencode }}" target="_blank" class="cta-btn" style="background:#25D366;color:white;">
         <i class="fa-brands fa-whatsapp"></i> Share on WhatsApp
     </a>
     <button onclick="shareProfile()" class="cta-btn" style="background:rgba(255,255,255,0.08);color:#fff8dc;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">
@@ -742,7 +742,7 @@
             </div>
             {% endfor %}
         {% else %}
-            <p class="empty-text">No reviews yet — be the first!</p>
+            <p class="empty-text">No reviews yet. Be the first!</p>
         {% endif %}
     </div>
 
@@ -753,11 +753,11 @@
             <label>Rating</label>
             <select name="rating" required>
                 <option value="">Select a rating</option>
-                <option value="5">⭐⭐⭐⭐⭐ — Excellent (5)</option>
-                <option value="4">⭐⭐⭐⭐ — Very Good (4)</option>
-                <option value="3">⭐⭐⭐ — Good (3)</option>
-                <option value="2">⭐⭐ — Fair (2)</option>
-                <option value="1">⭐ — Poor (1)</option>
+                <option value="5">⭐⭐⭐⭐⭐ Excellent (5)</option>
+                <option value="4">⭐⭐⭐⭐ Very Good (4)</option>
+                <option value="3">⭐⭐⭐ Good (3)</option>
+                <option value="2">⭐⭐ Fair (2)</option>
+                <option value="1">⭐ Poor (1)</option>
             </select>
             <label>Comment</label>
             <textarea name="comment" rows="4" placeholder="Share your experience with this artisan..." required></textarea>
