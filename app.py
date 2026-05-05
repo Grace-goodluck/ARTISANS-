@@ -319,6 +319,8 @@ def create_table():
         )
     ''')
 
+    conn.commit()  # commit initial table creations before alter loops
+
     for col, definition in [
         ("verified", "INTEGER DEFAULT 0"),
         ("user_id", "INTEGER"),
@@ -423,6 +425,8 @@ def create_table():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    conn.commit()  # commit all new table creations before alter loops that may rollback
 
     for col, definition in [
         ("business_hours", "TEXT"),
