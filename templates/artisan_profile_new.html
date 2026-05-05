@@ -799,12 +799,88 @@
         </form>
     </div>
 
+    <!-- VIDEO INTRO -->
+    {% if artisan.video_url %}
+    <div class="section-card full-width">
+        <div class="section-title"><i class="fa-solid fa-circle-play"></i> Video Intro</div>
+        {% set vid = artisan.video_url %}
+        {% if 'youtube.com/watch?v=' in vid %}
+            {% set yt_id = vid.split('v=')[1].split('&')[0] %}
+            <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;">
+                <iframe src="https://www.youtube.com/embed/{{ yt_id }}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:12px;" allowfullscreen></iframe>
+            </div>
+        {% elif 'youtu.be/' in vid %}
+            {% set yt_id = vid.split('youtu.be/')[1].split('?')[0] %}
+            <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;">
+                <iframe src="https://www.youtube.com/embed/{{ yt_id }}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:12px;" allowfullscreen></iframe>
+            </div>
+        {% else %}
+            <video controls style="width:100%;border-radius:12px;max-height:360px;background:#000;">
+                <source src="{{ vid }}">
+                Your browser does not support video.
+            </video>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- AVAILABILITY CALENDAR LINK -->
+    {% if avail_slots or session.user_id == artisan.user_id %}
+    <div class="section-card full-width">
+        <div class="section-title"><i class="fa-solid fa-calendar-days"></i> Availability</div>
+        {% if avail_slots %}
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+            {% for slot in avail_slots %}
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;{% if slot.is_available %}background:rgba(34,180,34,0.12);color:#66dd66;border:1px solid rgba(34,180,34,0.3);{% else %}background:rgba(200,50,50,0.12);color:#ff7777;border:1px solid rgba(200,50,50,0.3);{% endif %}">
+                <i class="fa-solid fa-calendar-day" style="font-size:10px;"></i> {{ slot.slot_date }}
+                {% if slot.is_available %}<i class="fa-solid fa-check" style="font-size:9px;"></i>{% else %}<i class="fa-solid fa-xmark" style="font-size:9px;"></i>{% endif %}
+            </span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="font-size:13px;color:rgba(255,248,220,0.4);margin-bottom:12px;">No specific dates marked yet.</p>
+        {% endif %}
+        {% if session.user_id == artisan.user_id %}
+        <a href="/artisan/{{ artisan.id }}/calendar" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#c49b3a;text-decoration:none;background:rgba(196,155,58,0.1);border:1px solid rgba(196,155,58,0.3);padding:7px 16px;border-radius:20px;">
+            <i class="fa-solid fa-pen-to-square"></i> Manage Availability
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- VERIFICATION REQUEST -->
+    {% if session.user_id == artisan.user_id and not artisan.verified %}
+    <div class="section-card full-width">
+        <div class="section-title"><i class="fa-solid fa-id-card"></i> Get Verified</div>
+        <p style="font-size:13px;color:rgba(255,248,220,0.6);margin-bottom:14px;">Submit your ID or documents to apply for the verified badge. Verified artisans get more trust and better visibility.</p>
+        <button onclick="document.getElementById('verify-modal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,180,34,0.12);color:#66dd66;border:1px solid rgba(34,180,34,0.3);border-radius:20px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+            <i class="fa-solid fa-id-card"></i> Request Verification Badge
+        </button>
+    </div>
+    {% endif %}
+
     <!-- REVIEWS -->
     <div class="section-card full-width">
         <div class="section-title">
             <i class="fa-solid fa-star"></i> Reviews
             <span class="review-badge">{{ review_count }}</span>
         </div>
+
+        {% if review_count > 0 and rating_breakdown %}
+        <div style="margin-bottom:18px;background:rgba(255,255,255,0.03);border-radius:10px;padding:14px 16px;">
+            {% for star in [5,4,3,2,1] %}
+            {% set count = rating_breakdown.get(star, 0) %}
+            {% set pct = (count / review_count * 100)|int if review_count else 0 %}
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">
+                <span style="font-size:12px;color:#c49b3a;width:18px;text-align:right;font-weight:700;">{{ star }}</span>
+                <i class="fa-solid fa-star" style="color:#c49b3a;font-size:11px;"></i>
+                <div style="flex:1;height:7px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;">
+                    <div style="height:100%;width:{{ pct }}%;background:#c49b3a;border-radius:10px;transition:width 0.4s;"></div>
+                </div>
+                <span style="font-size:11px;color:rgba(255,248,220,0.4);width:20px;text-align:right;">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         {% if reviews %}
             {% for review in reviews %}
@@ -994,6 +1070,36 @@
             <div style="display:flex;gap:10px;">
                 <button type="submit" style="flex:1;padding:10px;border-radius:25px;background:rgba(200,50,50,0.75);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;">Submit Flag</button>
                 <button type="button" onclick="document.getElementById('flag-review-modal').style.display='none'" style="flex:1;padding:10px;border-radius:25px;background:rgba(255,255,255,0.08);color:#fff8dc;font-weight:700;font-size:13px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- VERIFY REQUEST MODAL -->
+<div id="verify-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9100;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#022f05;border:1px solid rgba(196,155,58,0.35);border-radius:16px;padding:28px;max-width:420px;width:100%;">
+        <h3 style="font-size:17px;color:#c49b3a;margin-bottom:14px;"><i class="fa-solid fa-id-card"></i> Request Verification Badge</h3>
+        <p style="font-size:13px;color:rgba(255,248,220,0.6);margin-bottom:16px;">Our team will review your information and verify your profile within 48 hours.</p>
+        <form method="POST" action="/artisan/{{ artisan.id }}/verify-request">
+            <div style="margin-bottom:12px;">
+                <label style="font-size:11px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">ID Type</label>
+                <select name="id_type" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:14px;outline:none;">
+                    <option value="">Select ID type</option>
+                    <option value="NIN">NIN (National ID Number)</option>
+                    <option value="Voter's Card">Voter's Card</option>
+                    <option value="Driver's License">Driver's License</option>
+                    <option value="International Passport">International Passport</option>
+                    <option value="BVN">BVN</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="font-size:11px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Additional Notes (optional)</label>
+                <textarea name="notes" rows="3" placeholder="Any extra information for the admin..." style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;font-family:inherit;outline:none;resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" style="flex:1;padding:11px;border-radius:25px;background:rgba(34,180,34,0.7);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
+                <button type="button" onclick="document.getElementById('verify-modal').style.display='none'" style="flex:1;padding:11px;border-radius:25px;background:rgba(255,255,255,0.08);color:#fff8dc;font-weight:700;font-size:13px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">Cancel</button>
             </div>
         </form>
     </div>

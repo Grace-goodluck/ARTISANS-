@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Requests | Admin | Artisaan's Crib</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; padding: 32px 24px; }
+        a.back { color: #c49b3a; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+        h1 { font-size: 24px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 13px; margin-bottom: 28px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+        .artisan-link { color: #c49b3a; font-weight: 700; text-decoration: none; font-size: 15px; }
+        .meta { font-size: 12px; color: rgba(255,248,220,0.4); margin: 8px 0; }
+        .notes { font-size: 13px; color: rgba(255,248,220,0.7); margin-bottom: 12px; background: rgba(255,255,255,0.04); border-left: 3px solid rgba(196,155,58,0.3); padding: 8px 12px; border-radius: 0 8px 8px 0; }
+        .action-row { display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; }
+        .btn-approve { background: rgba(34,180,34,0.2); color: #66dd66; border: 1px solid rgba(34,180,34,0.4); }
+        .btn-reject  { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); }
+        .empty { text-align: center; padding: 60px; color: rgba(255,248,220,0.4); }
+        .empty i { font-size: 40px; display: block; margin-bottom: 12px; color: rgba(196,155,58,0.3); }
+    </style>
+</head>
+<body>
+<a href="/admin" class="back"><i class="fa-solid fa-arrow-left"></i> Back to Admin</a>
+<h1><i class="fa-solid fa-id-card"></i> Verification Requests</h1>
+<p class="sub">{{ reqs|length }} pending verification request{{ 's' if reqs|length != 1 }}</p>
+
+{% if reqs %}
+    {% for r in reqs %}
+    <div class="card">
+        <a href="/artisan/{{ r.artisan_id }}" class="artisan-link" target="_blank">{{ r.artisan_name }}</a>
+        <span style="font-size:12px;color:rgba(255,248,220,0.5);margin-left:8px;">{{ r.artisan_skill }}</span>
+        <div class="meta"><i class="fa-solid fa-id-card"></i> ID Type: <strong>{{ r.id_type or 'Not specified' }}</strong> &nbsp;·&nbsp; <i class="fa-solid fa-clock"></i> {{ (r.created_at or '')|string|truncate(16,true,'') }}</div>
+        {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
+        <div class="action-row">
+            <form method="POST" action="/admin/verification-requests/{{ r.id }}/approve">
+                <button type="submit" class="btn-sm btn-approve"><i class="fa-solid fa-check"></i> Approve & Verify</button>
+            </form>
+            <form method="POST" action="/admin/verification-requests/{{ r.id }}/reject">
+                <button type="submit" class="btn-sm btn-reject"><i class="fa-solid fa-xmark"></i> Reject</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty"><i class="fa-solid fa-thumbs-up"></i> No pending verification requests.</div>
+{% endif %}
+</body>
+</html>

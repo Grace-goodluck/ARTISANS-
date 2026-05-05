@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Availability Calendar | Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; padding: 32px 24px; }
+        a.back { color: #c49b3a; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+        h1 { font-size: 22px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 13px; margin-bottom: 28px; }
+        .add-slot { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.2); border-radius: 14px; padding: 20px 24px; margin-bottom: 28px; max-width: 500px; }
+        .add-slot h3 { font-size: 14px; font-weight: 700; color: #c49b3a; margin-bottom: 14px; }
+        .field { margin-bottom: 14px; }
+        .field label { display: block; font-size: 11px; font-weight: 700; color: #c49b3a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .field input, .field select { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.07); border: 1px solid rgba(196,155,58,0.3); border-radius: 8px; color: #fff8dc; font-size: 14px; outline: none; }
+        .field select option { background: #022f05; }
+        .btn-add { background: #c49b3a; color: #022f05; font-weight: 800; padding: 10px 26px; border: none; border-radius: 25px; cursor: pointer; font-size: 13px; }
+        .slots-list { max-width: 500px; }
+        .slot-row { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); border: 1px solid rgba(196,155,58,0.12); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; }
+        .slot-date { font-size: 14px; font-weight: 700; }
+        .slot-status { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+        .slot-status.yes { background: rgba(34,180,34,0.15); color: #66dd66; }
+        .slot-status.no  { background: rgba(200,50,50,0.15); color: #ff7777; }
+        .btn-remove { background: none; border: none; color: rgba(200,50,50,0.6); cursor: pointer; font-size: 13px; }
+        .empty { color: rgba(255,248,220,0.4); font-size: 14px; padding: 16px 0; }
+    </style>
+</head>
+<body>
+<a href="/artisan/{{ artisan.id }}" class="back"><i class="fa-solid fa-arrow-left"></i> Back to Profile</a>
+<h1><i class="fa-solid fa-calendar-days"></i> Availability Calendar</h1>
+<p class="sub">Mark specific dates as available or busy so clients know when to book you.</p>
+
+<div class="add-slot">
+    <h3><i class="fa-solid fa-plus"></i> Add a Date</h3>
+    <form method="POST">
+        <input type="hidden" name="action" value="toggle">
+        <div class="field">
+            <label>Date</label>
+            <input type="date" name="slot_date" required>
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <select name="is_available">
+                <option value="1">Available</option>
+                <option value="0">Busy / Booked</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-add"><i class="fa-solid fa-calendar-plus"></i> Add Date</button>
+    </form>
+</div>
+
+<div class="slots-list">
+    <h3 style="font-size:14px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;">Marked Dates</h3>
+    {% if slots %}
+        {% for s in slots %}
+        <div class="slot-row">
+            <span class="slot-date"><i class="fa-solid fa-calendar-day" style="color:#c49b3a;margin-right:6px;"></i>{{ s.slot_date }}</span>
+            <span class="slot-status {{ 'yes' if s.is_available else 'no' }}">{{ 'Available' if s.is_available else 'Busy' }}</span>
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="slot_date" value="{{ s.slot_date }}">
+                <button type="submit" class="btn-remove" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+            </form>
+        </div>
+        {% endfor %}
+    {% else %}
+    <p class="empty">No dates marked yet. Add your first date above.</p>
+    {% endif %}
+</div>
+</body>
+</html>

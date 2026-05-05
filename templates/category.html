@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ skill }} Professionals | Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 20px; padding: 14px 32px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; }
+        nav a:hover { color: #c49b3a; opacity: 1; }
+        nav a:first-child { margin-right: auto; font-weight: 800; font-size: 17px; opacity: 1; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+        h1 { font-size: 28px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 14px; margin-bottom: 32px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 14px; overflow: hidden; text-decoration: none; color: inherit; transition: transform 0.2s, border-color 0.2s; display: flex; flex-direction: column; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(196,155,58,0.4); }
+        .card-img { width: 100%; height: 180px; object-fit: cover; }
+        .card-ph { width: 100%; height: 180px; background: rgba(196,155,58,0.07); display: flex; align-items: center; justify-content: center; font-size: 48px; color: rgba(196,155,58,0.25); }
+        .card-body { padding: 16px 18px; flex: 1; }
+        .card-name { font-size: 17px; font-weight: 800; margin-bottom: 4px; }
+        .card-loc { font-size: 13px; color: rgba(255,248,220,0.5); margin-bottom: 8px; }
+        .card-stars { color: #c49b3a; font-size: 13px; }
+        .avail { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; margin-top: 8px; }
+        .avail.yes { background: rgba(34,180,34,0.15); color: #66dd66; }
+        .avail.no  { background: rgba(200,50,50,0.15); color: #ff7777; }
+        .view-btn { display: block; margin: 12px 0 0; padding: 9px; border-radius: 25px; background: #c49b3a; color: #022f05; font-weight: 800; text-align: center; font-size: 13px; }
+        .empty { text-align: center; padding: 70px; color: rgba(255,248,220,0.4); }
+        .empty i { font-size: 48px; display: block; margin-bottom: 14px; color: rgba(196,155,58,0.25); }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-arrow-left"></i> All Professionals</a>
+</nav>
+<div class="wrap">
+    <h1><i class="fa-solid fa-hammer"></i> {{ skill }} Professionals</h1>
+    <p class="sub">{{ artisans|length }} {{ skill }} professional{{ 's' if artisans|length != 1 }} found on Artisaan's Crib</p>
+    {% if artisans %}
+    <div class="grid">
+        {% for a in artisans %}
+        <a href="/artisan/{{ a.id }}" class="card">
+            {% if a.image %}
+            <img src="{{ a.image if a.image.startswith('http') else '/static/uploads/'+a.image }}" class="card-img" alt="{{ a.name }}">
+            {% else %}<div class="card-ph"><i class="fa-solid fa-user"></i></div>{% endif %}
+            <div class="card-body">
+                <div class="card-name">{{ a.name }} {% if a.verified %}<i class="fa-solid fa-circle-check" style="color:#c49b3a;font-size:13px;"></i>{% endif %}</div>
+                <div class="card-loc"><i class="fa-solid fa-location-dot" style="color:#c49b3a;"></i> {{ a.location or 'Nigeria' }}</div>
+                <div class="card-stars">
+                    {% if a.review_count > 0 %}
+                        {% for i in range(a.avg_rating|int) %}<i class="fa-solid fa-star"></i>{% endfor %}
+                        {% for i in range(5 - a.avg_rating|int) %}<i class="fa-regular fa-star"></i>{% endfor %}
+                        <span style="color:rgba(255,248,220,0.5);font-size:11px;">({{ a.review_count }})</span>
+                    {% else %}<span style="color:rgba(255,248,220,0.35);font-size:12px;">No reviews yet</span>{% endif %}
+                </div>
+                {% if a.price_range %}<div style="font-size:12px;color:rgba(255,248,220,0.5);margin-top:6px;"><i class="fa-solid fa-naira-sign"></i> {{ a.price_range }}</div>{% endif %}
+                <span class="avail {{ 'yes' if a.is_available else 'no' }}"><i class="fa-solid fa-circle" style="font-size:7px;"></i> {{ 'Available' if a.is_available else 'Busy' }}</span>
+                <span class="view-btn">View Profile</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><i class="fa-solid fa-magnifying-glass"></i>No {{ skill }} professionals found yet.</div>
+    {% endif %}
+</div>
+</body>
+</html>

@@ -154,6 +154,13 @@
                 <option value="1" {% if avail_filter == '1' %}selected{% endif %}>Available Now</option>
                 <option value="0" {% if avail_filter == '0' %}selected{% endif %}>Busy</option>
             </select>
+            <select name="price" class="filter-select" onchange="this.form.submit()">
+                <option value="">Any Price</option>
+                <option value="5,000" {% if price_filter == '5,000' %}selected{% endif %}>Under ₦5k</option>
+                <option value="10,000" {% if price_filter == '10,000' %}selected{% endif %}>₦5k – ₦10k</option>
+                <option value="20,000" {% if price_filter == '20,000' %}selected{% endif %}>₦10k – ₦20k</option>
+                <option value="50,000" {% if price_filter == '50,000' %}selected{% endif %}>₦20k+</option>
+            </select>
         </form>
         {% if rating_filter or avail_filter or location_filter %}
         <a href="/artisans?search={{ search }}" style="color:#c49b3a;font-size:13px;text-decoration:none;white-space:nowrap;"><i class="fa-solid fa-xmark"></i> Clear filters</a>

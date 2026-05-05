@@ -426,7 +426,58 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS availability_slots (
+            id {PK},
+            artisan_id INTEGER,
+            slot_date TEXT,
+            is_available INTEGER DEFAULT 1,
+            UNIQUE(artisan_id, slot_date)
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS verification_requests (
+            id {PK},
+            artisan_id INTEGER,
+            id_type TEXT,
+            notes TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()  # commit all new table creations before alter loops that may rollback
+
+    for col, definition in [
+        ("video_url", "TEXT"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
+    for col, definition in [
+        ("caption", "TEXT"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE portfolios ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
+    for col, definition in [
+        ("client_email", "TEXT"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE bookings ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
 
     for col, definition in [
         ("business_hours", "TEXT"),
@@ -502,10 +553,15 @@ def home():
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
         FROM artisans a WHERE a.is_featured_week=1 LIMIT 1
     """).fetchone()
+    trending_skills = db_execute(conn, """
+        SELECT skill, COUNT(*) as c FROM artisans
+        WHERE skill IS NOT NULL AND skill != ''
+        GROUP BY skill ORDER BY c DESC LIMIT 8
+    """).fetchall()
     conn.close()
     return render_template("home.html", artisan_count=artisan_count, categories=categories,
                            skill_count=skill_count, testimonials=testimonials,
-                           featured_artisan=featured_artisan)
+                           featured_artisan=featured_artisan, trending_skills=trending_skills)
 
 
 @app.route("/artisans")
@@ -515,6 +571,7 @@ def artisans():
     location_filter = request.args.get('location', '').strip()
     rating_filter   = request.args.get('rating', '').strip()
     avail_filter    = request.args.get('avail', '').strip()
+    price_filter    = request.args.get('price', '').strip()
     page            = max(1, int(request.args.get('page', 1)))
     per_page        = 12
 
@@ -547,6 +604,10 @@ def artisans():
     if avail_filter in ('0', '1'):
         conditions.append("COALESCE(a.is_available, 1) = ?")
         params.append(int(avail_filter))
+
+    if price_filter:
+        conditions.append(f"a.price_range IS NOT NULL AND a.price_range != '' AND a.price_range {op} ?")
+        params.append('%' + price_filter + '%')
 
     where = " WHERE " + " AND ".join(conditions)
     all_rows = db_execute(conn, rating_sql + where, tuple(params)).fetchall()
@@ -583,7 +644,7 @@ def artisans():
                            page=page, total_pages=total_pages, total=total,
                            location_filter=location_filter, states=states,
                            rating_filter=rating_filter, avail_filter=avail_filter,
-                           skill_list=skill_list)
+                           price_filter=price_filter, skill_list=skill_list)
 
 
 @app.route("/add-artisan", methods=["GET", "POST"])
@@ -792,6 +853,7 @@ def artisan_profile(id):
     """, (artisan['skill'], id)).fetchall()
     packages  = db_execute(conn, "SELECT * FROM packages WHERE artisan_id=? ORDER BY id", (id,)).fetchall()
     faqs      = db_execute(conn, "SELECT * FROM faqs WHERE artisan_id=? ORDER BY id", (id,)).fetchall()
+    avail_slots = db_execute(conn, "SELECT slot_date, is_available FROM availability_slots WHERE artisan_id=? ORDER BY slot_date", (id,)).fetchall()
     is_bookmarked = False
     if 'user_id' in session:
         bm = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
@@ -803,6 +865,9 @@ def artisan_profile(id):
     average_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
     replied_count  = sum(1 for r in reviews if r.get('reply'))
     response_rate  = int(replied_count * 100 / review_count) if review_count > 0 else None
+    rating_breakdown = {5:0, 4:0, 3:0, 2:0, 1:0}
+    for rv in reviews:
+        rating_breakdown[int(rv['rating'])] = rating_breakdown.get(int(rv['rating']), 0) + 1
     contacted  = request.args.get('contacted') == '1'
     reported   = request.args.get('reported') == '1'
     completion = profile_completion(artisan)
@@ -818,7 +883,8 @@ def artisan_profile(id):
         completion=completion, related=related,
         response_rate=response_rate, saves_count=saves_count,
         badges=badges, packages=packages, faqs=faqs,
-        qr_url=qr_url, profile_url=profile_url)
+        qr_url=qr_url, profile_url=profile_url,
+        rating_breakdown=rating_breakdown, avail_slots=avail_slots)
 
 
 @app.route('/api/suggestions')
@@ -925,7 +991,7 @@ def edit_artisan(id):
         fields = ['name','email','dob','gender','languages','skill','experience',
                   'certifications','availability','price_range','service_area',
                   'phone','whatsapp','instagram','facebook','tiktok','twitter',
-                  'youtube','website','description','custom_orders','business_hours']
+                  'youtube','website','description','custom_orders','business_hours','video_url']
         u = {f: request.form.get(f, '') for f in fields}
         city  = request.form.get('city', '')
         state = request.form.get('state', '')
@@ -942,13 +1008,13 @@ def edit_artisan(id):
             name=?,email=?,dob=?,gender=?,languages=?,skill=?,experience=?,
             certifications=?,availability=?,price_range=?,location=?,service_area=?,
             phone=?,whatsapp=?,instagram=?,facebook=?,tiktok=?,twitter=?,
-            youtube=?,website=?,description=?,custom_orders=?,marketing=?,image=?,business_hours=?
+            youtube=?,website=?,description=?,custom_orders=?,marketing=?,image=?,business_hours=?,video_url=?
             WHERE id=?''',
             (u['name'],u['email'],u['dob'],u['gender'],u['languages'],u['skill'],u['experience'],
              u['certifications'],u['availability'],u['price_range'],u['location'],u['service_area'],
              u['phone'],u['whatsapp'],u['instagram'],u['facebook'],u['tiktok'],u['twitter'],
              u['youtube'],u['website'],u['description'],u['custom_orders'],u['marketing'],u['image'],
-             u['business_hours'],id))
+             u['business_hours'],u['video_url'],id))
 
         for photo in request.files.getlist('portfolio')[:5]:
             if photo and photo.filename and allowed_file(photo.filename):
@@ -1373,7 +1439,9 @@ def referral_redirect(code):
 @app.route('/jobs')
 def jobs():
     conn = get_db_connection()
-    all_jobs = db_execute(conn, "SELECT * FROM jobs WHERE status='open' ORDER BY created_at DESC").fetchall()
+    from datetime import datetime, timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=7)).strftime('%Y-%m-%d')
+    all_jobs = db_execute(conn, "SELECT * FROM jobs WHERE status='open' AND created_at >= ? ORDER BY created_at DESC", (cutoff,)).fetchall()
     conn.close()
     return render_template('jobs.html', jobs=all_jobs, posted=request.args.get('posted'))
 
@@ -1382,13 +1450,22 @@ def jobs():
 def post_job():
     if request.method == 'POST':
         conn = get_db_connection()
+        skill_needed = request.form.get('skill_needed', '')
+        title = request.form.get('title', '')
+        loc   = request.form.get('location', '')
         db_execute(conn, "INSERT INTO jobs (title, skill_needed, location, budget, description, client_name, client_phone) VALUES (?,?,?,?,?,?,?)",
-            (request.form.get('title',''), request.form.get('skill_needed',''),
-             request.form.get('location',''), request.form.get('budget',''),
+            (title, skill_needed, loc, request.form.get('budget',''),
              request.form.get('description',''), request.form.get('client_name',''),
              request.form.get('client_phone','')))
         conn.commit()
+        op = "ILIKE" if DATABASE_URL else "LIKE"
+        matching = db_execute(conn, f"SELECT email, name FROM artisans WHERE skill {op} ? AND email IS NOT NULL AND email != ''",
+            ('%' + skill_needed + '%',)).fetchall()
         conn.close()
+        for a in matching[:30]:
+            send_email(a['email'], f"New job posted: {title}",
+                f"Hello {a['name']},\n\nA new job matching your skill ({skill_needed}) was just posted on Artisaan's Crib.\n\n"
+                f"Job: {title}\nLocation: {loc}\n\nLog in to express your interest: https://artisaans-crib.vercel.app/jobs")
         return redirect(url_for('jobs') + '?posted=1')
     return render_template('post_job.html')
 
@@ -1579,9 +1656,16 @@ def update_booking_status(booking_id):
     if status not in ('pending', 'confirmed', 'declined', 'completed'):
         return redirect(url_for('my_bookings'))
     conn = get_db_connection()
+    booking = db_execute(conn, "SELECT b.*, a.name as artisan_name, a.skill as artisan_skill FROM bookings b JOIN artisans a ON a.id=b.artisan_id WHERE b.id=?", (booking_id,)).fetchone()
     db_execute(conn, "UPDATE bookings SET status=? WHERE id=?", (status, booking_id))
     conn.commit()
     conn.close()
+    if booking and booking.get('client_email') and status in ('confirmed', 'declined'):
+        status_word = 'confirmed' if status == 'confirmed' else 'declined'
+        send_email(booking['client_email'],
+            f"Booking {status_word} — {booking['artisan_name']}",
+            f"Hello {booking['client_name']},\n\nYour booking with {booking['artisan_name']} ({booking['artisan_skill']}) has been {status_word}.\n\n"
+            f"Service date: {booking.get('service_date','')}\n\nVisit Artisaan's Crib: https://artisaans-crib.vercel.app")
     return redirect(url_for('my_bookings'))
 
 
@@ -1635,6 +1719,152 @@ def dashboard_toggle_availability():
         conn.commit()
     conn.close()
     return redirect(url_for('dashboard'))
+
+
+@app.route('/category/<skill>')
+def category_page(skill):
+    conn = get_db_connection()
+    op = "ILIKE" if DATABASE_URL else "LIKE"
+    rows = db_execute(conn, f"""
+        SELECT a.*,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a
+        WHERE a.skill {op} ? AND a.name IS NOT NULL AND a.name != ''
+        ORDER BY a.is_promoted DESC, avg_rating DESC, a.view_count DESC
+    """, ('%' + skill + '%',)).fetchall()
+    conn.close()
+    return render_template('category.html', artisans=rows, skill=skill)
+
+
+@app.route('/leaderboard')
+def leaderboard():
+    conn = get_db_connection()
+    top_viewed = db_execute(conn, """
+        SELECT a.*,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a WHERE a.name IS NOT NULL AND a.name != ''
+        ORDER BY a.view_count DESC LIMIT 10
+    """).fetchall()
+    top_rated = db_execute(conn, """
+        SELECT a.*,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a WHERE a.name IS NOT NULL AND a.name != ''
+        HAVING review_count >= 1
+        ORDER BY avg_rating DESC, review_count DESC LIMIT 10
+    """).fetchall() if not DATABASE_URL else db_execute(conn, """
+        SELECT a.*,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a WHERE a.name IS NOT NULL AND a.name != ''
+        ORDER BY avg_rating DESC, review_count DESC LIMIT 10
+    """).fetchall()
+    conn.close()
+    return render_template('leaderboard.html', top_viewed=top_viewed, top_rated=top_rated)
+
+
+@app.route('/artisan/<int:id>/widget')
+def profile_widget(id):
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
+    if not artisan:
+        conn.close()
+        return "Not found", 404
+    artisan = dict(artisan)
+    reviews = db_execute(conn, "SELECT rating FROM reviews WHERE artisan_id=?", (id,)).fetchall()
+    conn.close()
+    review_count = len(reviews)
+    avg_rating = round(sum(r['rating'] for r in reviews) / review_count, 1) if reviews else 0
+    profile_url = request.host_url.rstrip('/') + f'/artisan/{id}'
+    return render_template('widget.html', artisan=artisan, avg_rating=avg_rating,
+                           review_count=review_count, profile_url=profile_url)
+
+
+@app.route('/artisan/<int:id>/calendar', methods=['GET', 'POST'])
+def artisan_calendar(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT id, user_id, name FROM artisans WHERE id=?", (id,)).fetchone()
+    if not artisan or artisan['user_id'] != session['user_id']:
+        conn.close()
+        return redirect(url_for('artisan_profile', id=id))
+    if request.method == 'POST':
+        slot_date   = request.form.get('slot_date', '')
+        is_available = int(request.form.get('is_available', 1))
+        action = request.form.get('action', 'toggle')
+        if slot_date:
+            if action == 'remove':
+                db_execute(conn, "DELETE FROM availability_slots WHERE artisan_id=? AND slot_date=?", (id, slot_date))
+            else:
+                op_sql = "INSERT INTO availability_slots (artisan_id, slot_date, is_available) VALUES (?,?,?) ON CONFLICT(artisan_id, slot_date) DO UPDATE SET is_available=?" if DATABASE_URL else "INSERT OR REPLACE INTO availability_slots (artisan_id, slot_date, is_available) VALUES (?,?,?)"
+                if DATABASE_URL:
+                    db_execute(conn, op_sql, (id, slot_date, is_available, is_available))
+                else:
+                    db_execute(conn, op_sql, (id, slot_date, is_available))
+            conn.commit()
+        conn.close()
+        return redirect(url_for('artisan_calendar', id=id))
+    slots = db_execute(conn, "SELECT slot_date, is_available FROM availability_slots WHERE artisan_id=? ORDER BY slot_date", (id,)).fetchall()
+    conn.close()
+    return render_template('availability_calendar.html', artisan=artisan, slots=slots)
+
+
+@app.route('/artisan/<int:id>/verify-request', methods=['POST'])
+def verification_request(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT id, user_id FROM artisans WHERE id=?", (id,)).fetchone()
+    if artisan and artisan['user_id'] == session['user_id']:
+        existing = db_execute(conn, "SELECT id FROM verification_requests WHERE artisan_id=? AND status='pending'", (id,)).fetchone()
+        if not existing:
+            db_execute(conn, "INSERT INTO verification_requests (artisan_id, id_type, notes) VALUES (?,?,?)",
+                (id, request.form.get('id_type',''), request.form.get('notes','')))
+            conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '?verify_requested=1')
+
+
+@app.route('/admin/verification-requests')
+def admin_verification_requests():
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    reqs = db_execute(conn, """
+        SELECT vr.*, a.name as artisan_name, a.skill as artisan_skill, a.id as artisan_id
+        FROM verification_requests vr JOIN artisans a ON a.id=vr.artisan_id
+        WHERE vr.status='pending' ORDER BY vr.created_at DESC
+    """).fetchall()
+    conn.close()
+    return render_template('admin_verify.html', reqs=reqs)
+
+
+@app.route('/admin/verification-requests/<int:req_id>/approve', methods=['POST'])
+def approve_verification(req_id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    vr = db_execute(conn, "SELECT artisan_id FROM verification_requests WHERE id=?", (req_id,)).fetchone()
+    if vr:
+        db_execute(conn, "UPDATE artisans SET verified=1 WHERE id=?", (vr['artisan_id'],))
+        db_execute(conn, "UPDATE verification_requests SET status='approved' WHERE id=?", (req_id,))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('admin_verification_requests'))
+
+
+@app.route('/admin/verification-requests/<int:req_id>/reject', methods=['POST'])
+def reject_verification(req_id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    db_execute(conn, "UPDATE verification_requests SET status='rejected' WHERE id=?", (req_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_verification_requests'))
 
 
 @app.errorhandler(500)

@@ -551,6 +551,25 @@
 </div>
 {% endif %}
 
+<!-- TRENDING SKILLS -->
+{% if trending_skills %}
+<div style="background:#011a02;padding:50px 40px;">
+    <div style="max-width:900px;margin:0 auto;text-align:center;">
+        <p style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#c49b3a;margin-bottom:8px;"><i class="fa-solid fa-fire"></i> Trending Right Now</p>
+        <h2 style="font-size:24px;font-weight:900;color:#fff8dc;margin-bottom:6px;">Most In-Demand Skills</h2>
+        <p style="font-size:14px;color:rgba(255,248,220,0.5);margin-bottom:28px;">Services clients are searching for most on Artisaan's Crib</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+            {% for s in trending_skills %}
+            <a href="/artisans?search={{ s.skill }}" style="display:inline-flex;align-items:center;gap:7px;background:rgba(196,155,58,0.1);border:1px solid rgba(196,155,58,0.3);color:#c49b3a;padding:9px 18px;border-radius:30px;text-decoration:none;font-size:14px;font-weight:700;transition:background 0.2s;" onmouseover="this.style.background='rgba(196,155,58,0.22)'" onmouseout="this.style.background='rgba(196,155,58,0.1)'">
+                <i class="fa-solid fa-fire" style="font-size:12px;"></i> {{ s.skill }}
+                <span style="background:rgba(196,155,58,0.2);border-radius:20px;padding:1px 8px;font-size:11px;">{{ s.c }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- TESTIMONIALS -->
 {% if testimonials %}
 <div class="testimonials-section">

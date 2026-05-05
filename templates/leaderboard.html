@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard | Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 20px; padding: 14px 32px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 15px; opacity: 0.85; }
+        nav a:hover { color: #c49b3a; opacity: 1; }
+        nav a:first-child { margin-right: auto; font-weight: 800; font-size: 17px; opacity: 1; }
+        .wrap { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+        h1 { font-size: 28px; font-weight: 900; color: #c49b3a; margin-bottom: 28px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 28px; }
+        .tab { padding: 9px 22px; border-radius: 25px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid rgba(196,155,58,0.3); background: rgba(255,255,255,0.05); color: rgba(255,248,220,0.7); }
+        .tab.active { background: #c49b3a; color: #022f05; border-color: #c49b3a; }
+        .board { display: none; }
+        .board.active { display: block; }
+        .row { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(196,155,58,0.12); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; transition: border-color 0.2s; }
+        .row:hover { border-color: rgba(196,155,58,0.35); }
+        .rank { font-size: 22px; font-weight: 900; color: rgba(255,248,220,0.25); width: 36px; text-align: center; flex-shrink: 0; }
+        .rank.gold { color: #ffd700; }
+        .rank.silver { color: #c0c0c0; }
+        .rank.bronze { color: #cd7f32; }
+        .avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(196,155,58,0.3); flex-shrink: 0; }
+        .avatar-ph { width: 52px; height: 52px; border-radius: 50%; background: rgba(196,155,58,0.1); display: flex; align-items: center; justify-content: center; color: #c49b3a; font-size: 22px; flex-shrink: 0; }
+        .info { flex: 1; }
+        .info-name { font-size: 16px; font-weight: 800; }
+        .info-meta { font-size: 12px; color: rgba(255,248,220,0.5); margin-top: 3px; }
+        .score { font-size: 18px; font-weight: 900; color: #c49b3a; white-space: nowrap; }
+        .score-lbl { font-size: 10px; color: rgba(255,248,220,0.4); font-weight: 400; display: block; text-align: right; }
+        a.row { text-decoration: none; color: inherit; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
+    <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
+</nav>
+<div class="wrap">
+    <h1><i class="fa-solid fa-trophy"></i> Leaderboard</h1>
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('viewed')"><i class="fa-solid fa-eye"></i> Most Viewed</button>
+        <button class="tab" onclick="showTab('rated')"><i class="fa-solid fa-star"></i> Top Rated</button>
+    </div>
+
+    <div id="board-viewed" class="board active">
+        {% for a in top_viewed %}
+        <a href="/artisan/{{ a.id }}" class="row">
+            <div class="rank {{ 'gold' if loop.index==1 else 'silver' if loop.index==2 else 'bronze' if loop.index==3 else '' }}">
+                {% if loop.index <= 3 %}<i class="fa-solid fa-trophy"></i>{% else %}{{ loop.index }}{% endif %}
+            </div>
+            {% if a.image %}
+            <img src="{{ a.image if a.image.startswith('http') else '/static/uploads/'+a.image }}" class="avatar" alt="{{ a.name }}">
+            {% else %}<div class="avatar-ph"><i class="fa-solid fa-user"></i></div>{% endif %}
+            <div class="info">
+                <div class="info-name">{{ a.name }} {% if a.verified %}<i class="fa-solid fa-circle-check" style="color:#c49b3a;font-size:12px;"></i>{% endif %}</div>
+                <div class="info-meta"><i class="fa-solid fa-hammer" style="color:#c49b3a;"></i> {{ a.skill }} &nbsp;·&nbsp; <i class="fa-solid fa-location-dot" style="color:#c49b3a;"></i> {{ a.location or 'Nigeria' }}</div>
+            </div>
+            <div class="score">{{ a.view_count or 0 }}<span class="score-lbl">views</span></div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div id="board-rated" class="board">
+        {% for a in top_rated %}
+        <a href="/artisan/{{ a.id }}" class="row">
+            <div class="rank {{ 'gold' if loop.index==1 else 'silver' if loop.index==2 else 'bronze' if loop.index==3 else '' }}">
+                {% if loop.index <= 3 %}<i class="fa-solid fa-trophy"></i>{% else %}{{ loop.index }}{% endif %}
+            </div>
+            {% if a.image %}
+            <img src="{{ a.image if a.image.startswith('http') else '/static/uploads/'+a.image }}" class="avatar" alt="{{ a.name }}">
+            {% else %}<div class="avatar-ph"><i class="fa-solid fa-user"></i></div>{% endif %}
+            <div class="info">
+                <div class="info-name">{{ a.name }} {% if a.verified %}<i class="fa-solid fa-circle-check" style="color:#c49b3a;font-size:12px;"></i>{% endif %}</div>
+                <div class="info-meta"><i class="fa-solid fa-hammer" style="color:#c49b3a;"></i> {{ a.skill }} &nbsp;·&nbsp; {{ a.review_count }} review{{ 's' if a.review_count != 1 }}</div>
+            </div>
+            <div class="score">{{ "%.1f"|format(a.avg_rating|float) }} ★<span class="score-lbl">avg rating</span></div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+<script>
+function showTab(id) {
+    document.querySelectorAll('.board').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('board-'+id).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
