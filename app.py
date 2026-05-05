@@ -1011,6 +1011,38 @@ def dashboard():
         completion_tips.append('Upload portfolio photos')
     pending_bookings = db_execute(conn, "SELECT * FROM bookings WHERE artisan_id=? AND status='pending' ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
     quote_reqs = db_execute(conn, "SELECT * FROM quote_requests WHERE artisan_id=? ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
+
+    # Analytics: reviews & bookings per month (last 6 months)
+    if DATABASE_URL:
+        month_fn = "TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YYYY')"
+        month_key = "TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM')"
+    else:
+        month_fn = "strftime('%b %Y', created_at)"
+        month_key = "strftime('%Y-%m', created_at)"
+
+    rev_monthly = db_execute(conn, f"""
+        SELECT {month_fn} as month, {month_key} as mkey, COUNT(*) as cnt
+        FROM reviews WHERE artisan_id=?
+        GROUP BY mkey, month ORDER BY mkey DESC LIMIT 6
+    """, (artisan['id'],)).fetchall()
+    book_monthly = db_execute(conn, f"""
+        SELECT {month_fn} as month, {month_key} as mkey, COUNT(*) as cnt
+        FROM bookings WHERE artisan_id=?
+        GROUP BY mkey, month ORDER BY mkey DESC LIMIT 6
+    """, (artisan['id'],)).fetchall()
+    rating_dist = db_execute(conn, """
+        SELECT rating, COUNT(*) as cnt FROM reviews
+        WHERE artisan_id=? GROUP BY rating ORDER BY rating
+    """, (artisan['id'],)).fetchall()
+
+    import json as _json
+    rev_labels  = [r['month'] for r in reversed(rev_monthly)]
+    rev_data    = [r['cnt']   for r in reversed(rev_monthly)]
+    book_labels = [r['month'] for r in reversed(book_monthly)]
+    book_data   = [r['cnt']   for r in reversed(book_monthly)]
+    rating_labels = [f"{r['rating']}★" for r in rating_dist]
+    rating_data   = [r['cnt'] for r in rating_dist]
+
     conn.close()
     referral_url = request.host_url.rstrip('/') + '/r/' + artisan['referral_code']
     return render_template('dashboard.html', artisan=artisan, msg_count=msg_count,
@@ -1018,7 +1050,10 @@ def dashboard():
                            saves_count=saves_count, book_count=book_count, response_rate=response_rate,
                            completed_jobs=completed_jobs, referral_url=referral_url,
                            completion_pct=completion_pct, completion_tips=completion_tips,
-                           pending_bookings=pending_bookings, quote_reqs=quote_reqs)
+                           pending_bookings=pending_bookings, quote_reqs=quote_reqs,
+                           rev_labels=_json.dumps(rev_labels), rev_data=_json.dumps(rev_data),
+                           book_labels=_json.dumps(book_labels), book_data=_json.dumps(book_data),
+                           rating_labels=_json.dumps(rating_labels), rating_data=_json.dumps(rating_data))
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])

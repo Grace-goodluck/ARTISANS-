@@ -6,6 +6,7 @@
     <title>My Dashboard | Artisaan's Crib</title>
     <meta name="theme-color" content="#022f05">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
@@ -131,6 +132,31 @@
         </div>
     </div>
 
+    <!-- ANALYTICS CHARTS -->
+    <div style="margin-bottom:32px;">
+        <div class="section-title"><i class="fa-solid fa-chart-line"></i> Performance Analytics</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+            <!-- Reviews per month -->
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.15);border-radius:14px;padding:20px;">
+                <div style="font-size:12px;font-weight:800;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;"><i class="fa-solid fa-star"></i> Reviews Per Month</div>
+                <canvas id="chartReviews" height="180"></canvas>
+            </div>
+            <!-- Bookings per month -->
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.15);border-radius:14px;padding:20px;">
+                <div style="font-size:12px;font-weight:800;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;"><i class="fa-solid fa-calendar-check"></i> Bookings Per Month</div>
+                <canvas id="chartBookings" height="180"></canvas>
+            </div>
+            <!-- Rating distribution -->
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.15);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;">
+                <div style="font-size:12px;font-weight:800;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;width:100%;"><i class="fa-solid fa-chart-pie"></i> Rating Breakdown</div>
+                <canvas id="chartRatings" height="200" style="max-width:200px;"></canvas>
+                {% if avg_rating > 0 %}
+                <div style="margin-top:14px;text-align:center;font-size:22px;font-weight:900;color:#c49b3a;">{{ avg_rating }} <span style="font-size:14px;color:rgba(255,248,220,0.5);font-weight:400;">avg rating</span></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- PROFILE COMPLETION METER -->
     <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.2);border-radius:14px;padding:22px 24px;margin-bottom:28px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
@@ -235,6 +261,86 @@
 </div>
 
 <script>
+// Chart defaults
+Chart.defaults.color = 'rgba(255,248,220,0.5)';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+var revLabels  = {{ rev_labels|safe }};
+var revData    = {{ rev_data|safe }};
+var bookLabels = {{ book_labels|safe }};
+var bookData   = {{ book_data|safe }};
+var ratingLabels = {{ rating_labels|safe }};
+var ratingData   = {{ rating_data|safe }};
+
+// Reviews per month bar chart
+new Chart(document.getElementById('chartReviews'), {
+    type: 'bar',
+    data: {
+        labels: revLabels.length ? revLabels : ['No data yet'],
+        datasets: [{
+            label: 'Reviews',
+            data: revData.length ? revData : [0],
+            backgroundColor: 'rgba(196,155,58,0.5)',
+            borderColor: '#c49b3a',
+            borderWidth: 2,
+            borderRadius: 6,
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// Bookings per month bar chart
+new Chart(document.getElementById('chartBookings'), {
+    type: 'bar',
+    data: {
+        labels: bookLabels.length ? bookLabels : ['No data yet'],
+        datasets: [{
+            label: 'Bookings',
+            data: bookData.length ? bookData : [0],
+            backgroundColor: 'rgba(102,221,102,0.4)',
+            borderColor: '#66dd66',
+            borderWidth: 2,
+            borderRadius: 6,
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// Rating distribution doughnut
+new Chart(document.getElementById('chartRatings'), {
+    type: 'doughnut',
+    data: {
+        labels: ratingLabels.length ? ratingLabels : ['No reviews'],
+        datasets: [{
+            data: ratingData.length ? ratingData : [1],
+            backgroundColor: ['#ff4444','#ff9933','#ffcc00','#99dd44','#22cc66'],
+            borderColor: '#022f05',
+            borderWidth: 3,
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+            legend: { position: 'bottom', labels: { padding: 12, font: { size: 12 } } }
+        },
+        cutout: '60%'
+    }
+});
+
 (function(){
     fetch('/api/unread-count').then(function(r){return r.json();}).then(function(d){
         if(d.count>0){
