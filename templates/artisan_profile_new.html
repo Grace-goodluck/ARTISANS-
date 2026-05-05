@@ -572,6 +572,9 @@
     <a href="/book/{{ artisan.id }}" class="cta-btn" style="background:rgba(196,155,58,0.15);color:#c49b3a;border:1px solid rgba(196,155,58,0.35);">
         <i class="fa-solid fa-calendar-check"></i> Book Appointment
     </a>
+    <a href="/quote/{{ artisan.id }}" class="cta-btn" style="background:rgba(100,160,255,0.12);color:#88bbff;border:1px solid rgba(100,160,255,0.35);">
+        <i class="fa-solid fa-file-invoice"></i> Request Quote
+    </a>
     <a href="https://wa.me/?text={{ (artisan.name + ', ' + artisan.skill + ' in ' + (artisan.location or '') + '. View profile: ')|urlencode }}{{ request.url|urlencode }}" target="_blank" class="cta-btn" style="background:#25D366;color:white;">
         <i class="fa-brands fa-whatsapp"></i> Share on WhatsApp
     </a>

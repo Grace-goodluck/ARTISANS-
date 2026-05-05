@@ -447,6 +447,20 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS quote_requests (
+            id {PK},
+            artisan_id INTEGER,
+            client_name TEXT,
+            client_phone TEXT,
+            client_email TEXT,
+            service_needed TEXT,
+            budget TEXT,
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()  # commit all new table creations before alter loops that may rollback
 
     for col, definition in [
@@ -558,10 +572,24 @@ def home():
         WHERE skill IS NOT NULL AND skill != ''
         GROUP BY skill ORDER BY c DESC LIMIT 8
     """).fetchall()
+    interval_sql = "NOW() - INTERVAL '30 days'" if DATABASE_URL else "datetime('now', '-30 days')"
+    artisan_of_month = db_execute(conn, f"""
+        SELECT a.*,
+            COUNT(r.id) as month_reviews,
+            COALESCE(AVG(r.rating), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r2 WHERE r2.artisan_id=a.id), 0) as review_count
+        FROM artisans a
+        JOIN reviews r ON r.artisan_id = a.id
+        WHERE r.created_at >= {interval_sql} AND a.name IS NOT NULL AND a.name != ''
+        GROUP BY a.id
+        ORDER BY month_reviews DESC, avg_rating DESC
+        LIMIT 1
+    """).fetchone()
     conn.close()
     return render_template("home.html", artisan_count=artisan_count, categories=categories,
                            skill_count=skill_count, testimonials=testimonials,
-                           featured_artisan=featured_artisan, trending_skills=trending_skills)
+                           featured_artisan=featured_artisan, trending_skills=trending_skills,
+                           artisan_of_month=artisan_of_month)
 
 
 @app.route("/artisans")
@@ -967,12 +995,30 @@ def dashboard():
         db_execute(conn, "UPDATE artisans SET referral_code=? WHERE id=?", (code, artisan['id']))
         conn.commit()
         artisan['referral_code'] = code
+    has_portfolio = db_execute(conn, "SELECT COUNT(*) as c FROM portfolios WHERE artisan_id=?", (artisan['id'],)).fetchone()['c'] > 0
+    completion_pct = profile_completion(artisan)
+    if has_portfolio:
+        completion_pct = min(100, completion_pct + 8)
+    completion_tips = []
+    for f, label in [('email','Add your email'),('phone','Add your phone number'),
+                     ('description','Write an About section'),('image','Upload a profile photo'),
+                     ('experience','Add years of experience'),('price_range','Set your price range'),
+                     ('whatsapp','Add WhatsApp number'),('certifications','List certifications'),
+                     ('skill','Add your skill/trade'),('location','Add your location')]:
+        if not artisan.get(f):
+            completion_tips.append(label)
+    if not has_portfolio:
+        completion_tips.append('Upload portfolio photos')
+    pending_bookings = db_execute(conn, "SELECT * FROM bookings WHERE artisan_id=? AND status='pending' ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
+    quote_reqs = db_execute(conn, "SELECT * FROM quote_requests WHERE artisan_id=? ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
     conn.close()
     referral_url = request.host_url.rstrip('/') + '/r/' + artisan['referral_code']
     return render_template('dashboard.html', artisan=artisan, msg_count=msg_count,
                            review_count=rev_count, avg_rating=avg_rating, recent_msgs=recent_msgs,
                            saves_count=saves_count, book_count=book_count, response_rate=response_rate,
-                           completed_jobs=completed_jobs, referral_url=referral_url)
+                           completed_jobs=completed_jobs, referral_url=referral_url,
+                           completion_pct=completion_pct, completion_tips=completion_tips,
+                           pending_bookings=pending_bookings, quote_reqs=quote_reqs)
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])
@@ -1865,6 +1911,39 @@ def reject_verification(req_id):
     conn.commit()
     conn.close()
     return redirect(url_for('admin_verification_requests'))
+
+
+@app.route('/quote/<int:id>', methods=['GET', 'POST'])
+def request_quote(id):
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
+    if not artisan:
+        conn.close()
+        return redirect(url_for('artisans'))
+    artisan = dict(artisan)
+    success = False
+    if request.method == 'POST':
+        client_name    = request.form.get('client_name', '').strip()
+        client_phone   = request.form.get('client_phone', '').strip()
+        client_email   = request.form.get('client_email', '').strip()
+        service_needed = request.form.get('service_needed', '').strip()
+        budget         = request.form.get('budget', '').strip()
+        message        = request.form.get('message', '').strip()
+        db_execute(conn, """INSERT INTO quote_requests
+            (artisan_id, client_name, client_phone, client_email, service_needed, budget, message)
+            VALUES (?,?,?,?,?,?,?)""",
+            (id, client_name, client_phone, client_email, service_needed, budget, message))
+        conn.commit()
+        if artisan.get('email'):
+            send_email(artisan['email'],
+                f"New Quote Request from {client_name} | Artisaan's Crib",
+                f"Hi {artisan['name']},\n\nYou have a new quote request on Artisaan's Crib.\n\n"
+                f"Client: {client_name}\nPhone: {client_phone}\nEmail: {client_email}\n"
+                f"Service Needed: {service_needed}\nBudget: {budget}\nMessage: {message}\n\n"
+                f"Log in to your dashboard to respond.\n\nArtisaan's Crib")
+        success = True
+    conn.close()
+    return render_template('quote.html', artisan=artisan, success=success)
 
 
 @app.errorhandler(500)

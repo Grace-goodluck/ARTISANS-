@@ -317,6 +317,19 @@
         .test-avatar-ph { width: 38px; height: 38px; border-radius: 50%; background: #022f05; display: flex; align-items: center; justify-content: center; color: #c49b3a; font-size: 16px; }
         .test-name { font-size: 14px; font-weight: 700; color: #022f05; }
         .test-skill { font-size: 12px; color: #888; }
+
+        /* LIGHT MODE */
+        body.light-mode { background: #f5f5f0 !important; color: #222 !important; }
+        body.light-mode nav { background: #fff !important; border-bottom-color: rgba(196,155,58,0.3) !important; }
+        body.light-mode nav a { color: #222 !important; }
+        body.light-mode .stats-bar { background: #fff; }
+        body.light-mode .stat-item .num { color: #022f05; }
+        body.light-mode .stat-item .lbl { color: #555; }
+        body.light-mode .hero { background: linear-gradient(135deg, #022f05 60%, #044a08 100%) !important; }
+        body.light-mode footer { background: #fff; border-top-color: rgba(0,0,0,0.08); }
+        body.light-mode .footer-col a { color: #555; }
+        body.light-mode .footer-bottom { color: #999; }
+        body.light-mode #theme-toggle { background: #022f05; color: #c49b3a; border-color: #c49b3a; }
     </style>
 </head>
 <body>
@@ -347,6 +360,7 @@
     <button class="hamburger" onclick="toggleNav()" aria-label="Menu">
         <span></span><span></span><span></span>
     </button>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" style="background:rgba(255,255,255,0.08);border:1px solid rgba(196,155,58,0.3);color:#c49b3a;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;"><i class="fa-solid fa-moon"></i></button>
     <div class="nav-links" id="nav-links">
         <a href="/artisans"><i class="fa-solid fa-magnifying-glass"></i> Find a Professional</a>
         <a href="/map"><i class="fa-solid fa-map-location-dot"></i> Map View</a>
@@ -510,6 +524,26 @@
     </div>
 </div>
 
+<!-- ARTISAN OF THE MONTH -->
+{% if artisan_of_month %}
+<div style="background:#011a02;border-top:1px solid rgba(196,155,58,0.15);border-bottom:1px solid rgba(196,155,58,0.15);padding:50px 40px;text-align:center;">
+    <p style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#c49b3a;margin-bottom:12px;"><i class="fa-solid fa-calendar-star"></i> Artisan of the Month</p>
+    <div style="display:inline-flex;align-items:center;gap:24px;background:rgba(255,255,255,0.04);border:2px solid rgba(196,155,58,0.35);border-radius:20px;padding:22px 34px;flex-wrap:wrap;justify-content:center;max-width:540px;">
+        {% if artisan_of_month.image %}
+        <img src="{{ artisan_of_month.image if artisan_of_month.image.startswith('http') else '/static/uploads/'+artisan_of_month.image }}" alt="{{ artisan_of_month.name }}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #c49b3a;">
+        {% else %}
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(196,155,58,0.1);border:3px solid #c49b3a;display:flex;align-items:center;justify-content:center;font-size:32px;color:#c49b3a;"><i class="fa-solid fa-user"></i></div>
+        {% endif %}
+        <div style="text-align:left;">
+            <div style="font-size:20px;font-weight:900;color:#fff8dc;">{{ artisan_of_month.name }}</div>
+            <div style="font-size:13px;color:#c49b3a;margin-top:4px;"><i class="fa-solid fa-hammer"></i> {{ artisan_of_month.skill }}</div>
+            <div style="font-size:12px;color:rgba(255,248,220,0.5);margin-top:2px;"><i class="fa-solid fa-star"></i> {{ artisan_of_month.month_reviews }} reviews this month</div>
+            <a href="/artisan/{{ artisan_of_month.id }}" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:#c49b3a;color:#022f05;padding:7px 18px;border-radius:20px;font-size:12px;font-weight:800;text-decoration:none;"><i class="fa-solid fa-eye"></i> View Profile</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- ARTISAN OF THE WEEK -->
 {% if featured_artisan %}
 <div style="background:linear-gradient(135deg,#022f05 60%,#044a08 100%);padding:60px 40px;text-align:center;">
@@ -649,6 +683,21 @@
       }).catch(function(){});
   })();
   {% endif %}
+
+  // Dark/Light mode
+  (function(){
+    if(localStorage.getItem('theme')==='light') {
+      document.body.classList.add('light-mode');
+      var btn = document.getElementById('theme-toggle');
+      if(btn) btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+    }
+  })();
+  function toggleTheme() {
+    var light = document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', light ? 'light' : 'dark');
+    var btn = document.getElementById('theme-toggle');
+    if(btn) btn.innerHTML = light ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+  }
 </script>
 </body>
 </html>

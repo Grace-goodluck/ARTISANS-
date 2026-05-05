@@ -131,6 +131,29 @@
         </div>
     </div>
 
+    <!-- PROFILE COMPLETION METER -->
+    <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.2);border-radius:14px;padding:22px 24px;margin-bottom:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div style="font-size:13px;font-weight:800;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;"><i class="fa-solid fa-chart-pie"></i> Profile Completion</div>
+            <span style="font-size:24px;font-weight:900;color:{% if completion_pct >= 80 %}#66dd66{% elif completion_pct >= 50 %}#c49b3a{% else %}#ff7777{% endif %};">{{ completion_pct }}%</span>
+        </div>
+        <div style="height:10px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin-bottom:12px;">
+            <div style="height:100%;width:{{ completion_pct }}%;background:{% if completion_pct >= 80 %}#66dd66{% elif completion_pct >= 50 %}#c49b3a{% else %}#ff7777{% endif %};border-radius:10px;transition:width 0.6s;"></div>
+        </div>
+        {% if completion_tips %}
+        <p style="font-size:12px;color:rgba(255,248,220,0.5);margin-bottom:8px;">Complete these to improve your profile:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            {% for tip in completion_tips[:5] %}
+            <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid rgba(196,155,58,0.2);border-radius:20px;padding:4px 10px;color:rgba(255,248,220,0.6);">+ {{ tip }}</span>
+            {% endfor %}
+            {% if completion_tips|length > 5 %}<span style="font-size:11px;color:rgba(255,248,220,0.4);padding:4px 4px;">+{{ completion_tips|length - 5 }} more</span>{% endif %}
+        </div>
+        {% else %}
+        <p style="font-size:13px;color:#66dd66;"><i class="fa-solid fa-circle-check"></i> Your profile looks great!</p>
+        {% endif %}
+        <a href="/artisan/{{ artisan.id }}/edit" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;font-weight:700;color:#c49b3a;text-decoration:none;background:rgba(196,155,58,0.1);border:1px solid rgba(196,155,58,0.3);padding:6px 14px;border-radius:20px;"><i class="fa-solid fa-pen"></i> Complete Profile</a>
+    </div>
+
     <!-- EARNINGS & REFERRAL -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px;">
         <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(196,155,58,0.2);border-radius:14px;padding:22px 24px;">
@@ -163,8 +186,39 @@
         {% endif %}
     </div>
 
+    <!-- QUOTE REQUESTS -->
+    {% if quote_reqs %}
+    <div class="section-title"><i class="fa-solid fa-file-invoice"></i> Recent Quote Requests</div>
+    {% for q in quote_reqs %}
+    <div class="msg-card">
+        <div class="msg-from"><i class="fa-solid fa-user" style="color:#c49b3a;margin-right:6px;"></i>{{ q.client_name }}
+            {% if q.budget %}<span style="font-size:11px;background:rgba(196,155,58,0.15);color:#c49b3a;border-radius:10px;padding:2px 8px;margin-left:8px;">{{ q.budget }}</span>{% endif %}
+        </div>
+        <div class="msg-phone"><i class="fa-solid fa-phone" style="color:#c49b3a;margin-right:4px;"></i>{{ q.client_phone }}{% if q.client_email %} &nbsp;·&nbsp; <i class="fa-solid fa-envelope" style="color:#c49b3a;"></i> {{ q.client_email }}{% endif %}</div>
+        <div style="font-size:13px;color:#c49b3a;font-weight:700;margin-bottom:4px;">{{ q.service_needed }}</div>
+        {% if q.message %}<div class="msg-text">{{ q.message }}</div>{% endif %}
+        <div class="msg-date">{{ (q.created_at or '')|string|truncate(16,true,'') }}</div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- PENDING BOOKINGS -->
+    {% if pending_bookings %}
+    <div class="section-title" style="margin-top:8px;"><i class="fa-solid fa-calendar-check"></i> Pending Bookings</div>
+    {% for b in pending_bookings %}
+    <div class="msg-card">
+        <div class="msg-from"><i class="fa-solid fa-user" style="color:#c49b3a;margin-right:6px;"></i>{{ b.client_name }}
+            <span style="font-size:11px;background:rgba(196,155,58,0.15);color:#c49b3a;border-radius:10px;padding:2px 8px;margin-left:8px;">{{ b.service_date }}</span>
+        </div>
+        <div class="msg-phone"><i class="fa-solid fa-phone" style="color:#c49b3a;margin-right:4px;"></i>{{ b.client_phone }}</div>
+        {% if b.note %}<div class="msg-text">{{ b.note }}</div>{% endif %}
+        <a href="/my-bookings" style="font-size:12px;color:#c49b3a;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-top:8px;"><i class="fa-solid fa-arrow-right"></i> Manage</a>
+    </div>
+    {% endfor %}
+    {% endif %}
+
     <!-- RECENT MESSAGES -->
-    <div class="section-title"><i class="fa-solid fa-envelope"></i> Recent Inquiries</div>
+    <div class="section-title" {% if quote_reqs or pending_bookings %}style="margin-top:8px;"{% endif %}><i class="fa-solid fa-envelope"></i> Recent Inquiries</div>
     {% if recent_msgs %}
         {% for m in recent_msgs %}
         <div class="msg-card">

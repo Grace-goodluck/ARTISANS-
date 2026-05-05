@@ -170,6 +170,14 @@
 
     <!-- SEARCH HISTORY -->
     <div id="search-history" style="display:none;margin-top:10px;"></div>
+
+    <!-- SAVED SEARCHES -->
+    <div id="saved-searches-bar" style="display:none;margin-top:8px;"></div>
+    {% if search %}
+    <div style="margin-top:8px;text-align:center;">
+        <button onclick="saveCurrentSearch()" style="background:none;border:1px solid rgba(196,155,58,0.3);color:#c49b3a;border-radius:20px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-bookmark"></i> Save this search</button>
+    </div>
+    {% endif %}
 </div>
 
 <script>
@@ -217,6 +225,31 @@ document.addEventListener('click', function(e) {
             history.map(function(s){ return '<a href="/artisans?search='+encodeURIComponent(s)+'" style="display:inline-block;background:rgba(255,255,255,0.06);border:1px solid rgba(196,155,58,0.2);border-radius:20px;padding:4px 12px;font-size:12px;color:#fff8dc;text-decoration:none;margin:3px;">'+s+'</a>'; }).join('');
     }
 })();
+
+// Saved searches
+function saveCurrentSearch() {
+    var s = {{ search|tojson }};
+    if (!s) return;
+    var saved = JSON.parse(localStorage.getItem('savedSearches') || '[]');
+    if (!saved.includes(s)) { saved.unshift(s); if (saved.length > 8) saved = saved.slice(0,8); localStorage.setItem('savedSearches', JSON.stringify(saved)); }
+    alert('Search "' + s + '" saved!');
+    renderSavedSearches();
+}
+function renderSavedSearches() {
+    var bar = document.getElementById('saved-searches-bar');
+    var saved = JSON.parse(localStorage.getItem('savedSearches') || '[]');
+    if (!saved.length) { bar.style.display='none'; return; }
+    bar.style.display='block';
+    bar.innerHTML = '<span style="font-size:12px;color:rgba(255,248,220,0.4);margin-right:6px;"><i class="fa-solid fa-bookmark"></i> Saved:</span>' +
+        saved.map(function(s){ return '<span style="display:inline-flex;align-items:center;gap:4px;margin:3px;"><a href="/artisans?search='+encodeURIComponent(s)+'" style="background:rgba(196,155,58,0.08);border:1px solid rgba(196,155,58,0.25);border-radius:20px;padding:4px 10px;font-size:12px;color:#c49b3a;text-decoration:none;">'+s+'</a><button onclick="removeSavedSearch(\''+s+'\')" style="background:none;border:none;color:rgba(200,50,50,0.5);cursor:pointer;font-size:10px;padding:0 2px;" title="Remove">✕</button></span>'; }).join('');
+}
+function removeSavedSearch(s) {
+    var saved = JSON.parse(localStorage.getItem('savedSearches') || '[]');
+    saved = saved.filter(function(x){ return x !== s; });
+    localStorage.setItem('savedSearches', JSON.stringify(saved));
+    renderSavedSearches();
+}
+renderSavedSearches();
 
 // Compare
 var compareIds = JSON.parse(localStorage.getItem('compareIds') || '[]');
