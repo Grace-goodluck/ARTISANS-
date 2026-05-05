@@ -158,6 +158,7 @@
         {% if rating_filter or avail_filter or location_filter %}
         <a href="/artisans?search={{ search }}" style="color:#c49b3a;font-size:13px;text-decoration:none;white-space:nowrap;"><i class="fa-solid fa-xmark"></i> Clear filters</a>
         {% endif %}
+        <button onclick="nearMe()" class="filter-select" style="cursor:pointer;background:rgba(196,155,58,0.12);border-color:rgba(196,155,58,0.4);color:#c49b3a;font-weight:700;" title="Find artisans near your location"><i class="fa-solid fa-location-crosshairs"></i> Near Me</button>
     </div>
 
     <!-- SEARCH HISTORY -->
@@ -269,6 +270,30 @@ if (localStorage.getItem('lightMode') === '1') {
     document.body.classList.add('light-mode');
     document.getElementById('dark-icon').className = 'fa-solid fa-moon';
 }
+
+function nearMe() {
+    if (!navigator.geolocation) { alert('Geolocation not supported by your browser.'); return; }
+    navigator.geolocation.getCurrentPosition(function(pos) {
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng)
+        .then(function(r){return r.json();}).then(function(d){
+            var city = d.address.city || d.address.town || d.address.state_district || d.address.state || '';
+            if (city) { window.location.href = '/artisans?location='+encodeURIComponent(city); }
+            else { alert('Could not determine your city. Try selecting a state manually.'); }
+        }).catch(function(){ alert('Location lookup failed. Please select your state manually.'); });
+    }, function(){ alert('Location access denied. Please select your state from the filter.'); });
+}
+
+{% if session.user_id %}
+(function(){
+    fetch('/api/unread-count').then(function(r){return r.json();}).then(function(d){
+        if(d.count>0){
+            var bells=document.querySelectorAll('a[href="/notifications"]');
+            bells.forEach(function(b){b.innerHTML=b.innerHTML+' <span style="display:inline-flex;align-items:center;justify-content:center;background:#c49b3a;color:#022f05;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;margin-left:2px;">'+d.count+'</span>';});
+        }
+    }).catch(function(){});
+})();
+{% endif %}
 </script>
 
 <div class="grid-wrap">
@@ -301,7 +326,8 @@ if (localStorage.getItem('lightMode') === '1') {
             <div class="card-body">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
                     <div class="card-name">{{ artisan.name }}</div>
-                    {% if artisan.verified %}<span class="badge-featured"><i class="fa-solid fa-circle-check"></i> Featured</span>{% endif %}
+                    {% if artisan.verified %}<span class="badge-featured"><i class="fa-solid fa-circle-check"></i> Verified</span>{% endif %}
+                    {% if artisan.is_promoted %}<span class="badge-featured" style="background:rgba(196,155,58,0.3);"><i class="fa-solid fa-bolt"></i> Promoted</span>{% endif %}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
                     <div class="card-skill"><i class="fa-solid fa-hammer"></i> {{ artisan.skill }}</div>

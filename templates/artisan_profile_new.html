@@ -472,6 +472,15 @@
             <span title="Saves"><i class="fa-solid fa-heart" style="color:#e05;"></i> {{ saves_count }}</span>
             {% if response_rate is not none %}<span title="Review response rate"><i class="fa-solid fa-reply" style="color:#c49b3a;"></i> {{ response_rate }}% response</span>{% endif %}
         </div>
+        {% if badges %}
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+            {% for icon, label, color in badges %}
+            <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;color:{{ color }};">
+                <i class="fa-solid {{ icon }}"></i> {{ label }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% if artisan.is_available %}
             <span class="avail-badge yes"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Available for hire</span>
         {% else %}
@@ -560,6 +569,14 @@
     <button onclick="shareProfile()" class="cta-btn" style="background:rgba(255,255,255,0.08);color:#fff8dc;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">
         <i class="fa-solid fa-copy"></i> Copy Link
     </button>
+    <button onclick="document.getElementById('qr-modal').style.display='flex'" class="cta-btn" style="background:rgba(255,255,255,0.06);color:#fff8dc;border:1px solid rgba(255,255,255,0.12);cursor:pointer;" title="Show QR Code">
+        <i class="fa-solid fa-qrcode"></i> QR Code
+    </button>
+    {% if artisan.referral_code %}
+    <button onclick="copyRef()" class="cta-btn" style="background:rgba(196,155,58,0.08);color:#c49b3a;border:1px solid rgba(196,155,58,0.2);cursor:pointer;" title="Copy referral link">
+        <i class="fa-solid fa-link"></i> Referral Link
+    </button>
+    {% endif %}
     {% if session.user_id and session.user_id != artisan.user_id %}
     <button onclick="document.getElementById('report-modal').style.display='flex'" class="cta-btn" style="background:rgba(200,50,50,0.12);color:#ff8888;border:1px solid rgba(200,50,50,0.3);cursor:pointer;">
         <i class="fa-solid fa-flag"></i> Report
@@ -799,6 +816,9 @@
                     </div>
                     {% if review.get('reviewer_name') %}<span style="font-size:13px;font-weight:700;color:rgba(255,248,220,0.7);">{{ review['reviewer_name'] }}</span>{% endif %}
                     <span style="font-size:11px;color:rgba(255,248,220,0.35);margin-left:auto;">{{ (review['created_at'] or '')|string|truncate(10,true,'') }}</span>
+                    {% if session.user_id and session.user_id != artisan.user_id %}
+                    <button onclick="openFlagReview({{ review['id'] }})" title="Flag this review" style="background:none;border:none;color:rgba(200,50,50,0.45);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:8px;" onmouseover="this.style.color='#ff7777'" onmouseout="this.style.color='rgba(200,50,50,0.45)'"><i class="fa-solid fa-flag"></i></button>
+                    {% endif %}
                 </div>
                 <p class="review-comment">{{ review['comment'] }}</p>
                 {% if review.get('photo_url') %}
@@ -841,6 +861,81 @@
         </form>
     </div>
 
+    <!-- SERVICE PACKAGES -->
+    {% if packages or session.user_id == artisan.user_id %}
+    <div class="section-card full-width" id="packages">
+        <div class="section-title"><i class="fa-solid fa-box-open"></i> Service Packages</div>
+        {% if packages %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px;">
+            {% for pkg in packages %}
+            {% set tier_colors = {'bronze':'#cd7f32','silver':'#aaa','gold':'#c49b3a'} %}
+            {% set tc = tier_colors.get(pkg.tier|lower, '#c49b3a') %}
+            <div style="background:rgba(255,255,255,0.04);border:1px solid {{ tc }}44;border-radius:14px;padding:18px;">
+                <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:{{ tc }};letter-spacing:1px;margin-bottom:6px;">{{ pkg.tier or 'Standard' }}</div>
+                <div style="font-size:16px;font-weight:800;margin-bottom:6px;">{{ pkg.title }}</div>
+                {% if pkg.price %}<div style="font-size:18px;font-weight:900;color:{{ tc }};margin-bottom:8px;">₦{{ pkg.price }}</div>{% endif %}
+                {% if pkg.description %}<div style="font-size:13px;color:rgba(255,248,220,0.65);line-height:1.5;margin-bottom:8px;">{{ pkg.description }}</div>{% endif %}
+                {% if pkg.delivery_days %}<div style="font-size:12px;color:rgba(255,248,220,0.4);"><i class="fa-solid fa-clock"></i> {{ pkg.delivery_days }} day{{ 's' if pkg.delivery_days != 1 }} delivery</div>{% endif %}
+                {% if session.user_id == artisan.user_id %}
+                <form method="POST" action="/artisan/{{ artisan.id }}/packages/{{ pkg.id }}/delete" style="margin-top:10px;">
+                    <button type="submit" style="background:rgba(200,50,50,0.15);color:#ff7777;border:none;border-radius:15px;padding:5px 12px;font-size:11px;cursor:pointer;" onclick="return confirm('Delete this package?')"><i class="fa-solid fa-trash"></i></button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if session.user_id == artisan.user_id %}
+        <details style="margin-top:8px;">
+            <summary style="color:#c49b3a;font-size:13px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-plus"></i> Add Package</summary>
+            <form method="POST" action="/artisan/{{ artisan.id }}/packages/add" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label style="font-size:11px;color:#c49b3a;font-weight:700;">Tier</label>
+                <select name="tier" style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;">
+                    <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
+                </select></div>
+                <div><label style="font-size:11px;color:#c49b3a;font-weight:700;">Title</label>
+                <input type="text" name="title" placeholder="Package name" style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;"></div>
+                <div><label style="font-size:11px;color:#c49b3a;font-weight:700;">Price (₦)</label>
+                <input type="text" name="price" placeholder="e.g. 5000" style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;"></div>
+                <div><label style="font-size:11px;color:#c49b3a;font-weight:700;">Delivery (days)</label>
+                <input type="number" name="delivery_days" placeholder="e.g. 3" min="1" style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;"></div>
+                <div style="grid-column:1/-1;"><label style="font-size:11px;color:#c49b3a;font-weight:700;">Description</label>
+                <textarea name="description" rows="2" placeholder="What's included?" style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;resize:vertical;"></textarea></div>
+                <div style="grid-column:1/-1;"><button type="submit" style="background:#c49b3a;color:#022f05;font-weight:800;padding:9px 24px;border:none;border-radius:20px;cursor:pointer;font-size:13px;">Save Package</button></div>
+            </form>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- FAQ -->
+    {% if faqs or session.user_id == artisan.user_id %}
+    <div class="section-card full-width" id="faq">
+        <div class="section-title"><i class="fa-solid fa-circle-question"></i> FAQ</div>
+        {% for faq in faqs %}
+        <div style="border-bottom:1px solid rgba(255,255,255,0.06);padding:14px 0;">
+            <div style="font-size:14px;font-weight:700;color:#fff8dc;margin-bottom:6px;">Q: {{ faq.question }}</div>
+            <div style="font-size:14px;color:rgba(255,248,220,0.7);line-height:1.6;">A: {{ faq.answer }}</div>
+            {% if session.user_id == artisan.user_id %}
+            <form method="POST" action="/artisan/{{ artisan.id }}/faq/{{ faq.id }}/delete" style="margin-top:6px;display:inline;">
+                <button type="submit" style="background:none;color:rgba(200,50,50,0.6);border:none;font-size:12px;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% if session.user_id == artisan.user_id %}
+        <details style="margin-top:14px;">
+            <summary style="color:#c49b3a;font-size:13px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-plus"></i> Add FAQ</summary>
+            <form method="POST" action="/artisan/{{ artisan.id }}/faq/add" style="margin-top:12px;">
+                <input type="text" name="question" placeholder="Question" required style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;margin-bottom:8px;">
+                <textarea name="answer" rows="2" placeholder="Answer" required style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;resize:vertical;margin-bottom:8px;"></textarea>
+                <button type="submit" style="background:#c49b3a;color:#022f05;font-weight:800;padding:8px 22px;border:none;border-radius:20px;cursor:pointer;font-size:13px;">Add</button>
+            </form>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- RELATED ARTISANS -->
     {% if related %}
     <div class="section-card full-width">
@@ -866,6 +961,44 @@
 
 </div>
 
+<!-- QR CODE MODAL -->
+<div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9100;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#022f05;border:1px solid rgba(196,155,58,0.35);border-radius:16px;padding:32px;text-align:center;max-width:280px;width:100%;">
+        <h3 style="color:#c49b3a;margin-bottom:16px;font-size:16px;"><i class="fa-solid fa-qrcode"></i> Scan to View Profile</h3>
+        <img src="{{ qr_url }}" alt="QR Code" style="width:200px;height:200px;border-radius:8px;border:2px solid rgba(196,155,58,0.3);">
+        <p style="color:rgba(255,248,220,0.45);font-size:12px;margin-top:10px;">{{ artisan.name }} · {{ artisan.skill }}</p>
+        <button onclick="document.getElementById('qr-modal').style.display='none'" style="margin-top:14px;padding:8px 26px;border-radius:20px;background:rgba(255,255,255,0.08);color:#fff8dc;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:13px;">Close</button>
+    </div>
+</div>
+
+<!-- FLAG REVIEW MODAL -->
+<div id="flag-review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9100;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#022f05;border:1px solid rgba(196,155,58,0.3);border-radius:16px;padding:28px;max-width:400px;width:100%;">
+        <h3 style="font-size:16px;color:#ff9999;margin-bottom:16px;"><i class="fa-solid fa-flag"></i> Flag This Review</h3>
+        <form id="flag-review-form" method="POST" action="">
+            <div style="margin-bottom:14px;">
+                <label style="font-size:11px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Your Name (optional)</label>
+                <input type="text" name="reporter_name" placeholder="Anonymous" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:13px;outline:none;">
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="font-size:11px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Reason <span style="color:#ff6b6b;">*</span></label>
+                <select name="reason" required style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(196,155,58,0.25);background:#022f05;color:#fff8dc;font-size:13px;outline:none;">
+                    <option value="">Select a reason</option>
+                    <option>Fake or spam review</option>
+                    <option>Offensive or inappropriate</option>
+                    <option>Harassment or threats</option>
+                    <option>Unrelated to artisan</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" style="flex:1;padding:10px;border-radius:25px;background:rgba(200,50,50,0.75);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;">Submit Flag</button>
+                <button type="button" onclick="document.getElementById('flag-review-modal').style.display='none'" style="flex:1;padding:10px;border-radius:25px;background:rgba(255,255,255,0.08);color:#fff8dc;font-weight:700;font-size:13px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // Track recently viewed
 (function(){
@@ -887,6 +1020,34 @@ function shareProfile() {
         prompt('Copy this link:', url);
     });
 }
+
+function copyRef() {
+    var refUrl = '{{ request.host_url.rstrip("/") }}/r/{{ artisan.referral_code }}';
+    navigator.clipboard.writeText(refUrl).then(function() {
+        alert('Referral link copied!');
+    }).catch(function() {
+        prompt('Copy this referral link:', refUrl);
+    });
+}
+
+function openFlagReview(reviewId) {
+    document.getElementById('flag-review-form').action = '/review/' + reviewId + '/flag';
+    document.getElementById('flag-review-modal').style.display = 'flex';
+}
+
+// Notification badge
+(function(){
+    {% if session.user_id %}
+    fetch('/api/unread-count').then(function(r){return r.json();}).then(function(d){
+        if (d.count > 0) {
+            var bells = document.querySelectorAll('a[href="/notifications"]');
+            bells.forEach(function(b){
+                b.innerHTML = b.innerHTML + ' <span style="display:inline-flex;align-items:center;justify-content:center;background:#c49b3a;color:#022f05;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;margin-left:2px;">'+d.count+'</span>';
+            });
+        }
+    }).catch(function(){});
+    {% endif %}
+})();
 </script>
 
 

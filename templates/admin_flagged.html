@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flagged Reviews | Admin | Artisaan's Crib</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; padding: 32px 24px; }
+        a.back { color: #c49b3a; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+        h1 { font-size: 24px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 13px; margin-bottom: 28px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.15); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+        .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+        .artisan-link { color: #c49b3a; text-decoration: none; font-weight: 700; font-size: 14px; }
+        .stars { color: #c49b3a; font-size: 13px; }
+        .comment { font-size: 14px; color: rgba(255,248,220,0.75); margin-bottom: 10px; line-height: 1.5; border-left: 3px solid rgba(255,255,255,0.1); padding-left: 12px; }
+        .reason-box { background: rgba(200,50,50,0.1); border: 1px solid rgba(200,50,50,0.25); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #ff9999; margin-bottom: 10px; }
+        .meta { font-size: 12px; color: rgba(255,248,220,0.4); margin-bottom: 10px; }
+        .action-row { display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; }
+        .btn-dismiss { background: rgba(255,255,255,0.08); color: rgba(255,248,220,0.7); }
+        .btn-del { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); }
+        .empty { text-align: center; padding: 60px; color: rgba(255,248,220,0.4); }
+        .empty i { font-size: 40px; display: block; margin-bottom: 12px; color: rgba(196,155,58,0.3); }
+    </style>
+</head>
+<body>
+<a href="/admin" class="back"><i class="fa-solid fa-arrow-left"></i> Back to Admin</a>
+<h1><i class="fa-solid fa-flag"></i> Flagged Reviews</h1>
+<p class="sub">{{ flags|length }} review{{ 's' if flags|length != 1 }} flagged by users</p>
+
+{% if flags %}
+    {% for f in flags %}
+    <div class="card">
+        <div class="card-header">
+            <span class="stars">{% for i in range(f.rating) %}★{% endfor %}{% for i in range(5-f.rating) %}☆{% endfor %}</span>
+            <span style="font-size:13px;color:rgba(255,248,220,0.5);">on</span>
+            <a href="/artisan/{{ f.artisan_id }}" class="artisan-link" target="_blank">{{ f.artisan_name or 'Unknown Artisan' }}</a>
+        </div>
+        <div class="comment">{{ f.comment }}</div>
+        <div class="reason-box"><i class="fa-solid fa-flag"></i> Flagged by <strong>{{ f.reporter_name }}</strong>: {{ f.reason }}</div>
+        <div class="meta"><i class="fa-solid fa-clock"></i> {{ (f.created_at or '')|string|truncate(16,true,'') }}</div>
+        <div class="action-row">
+            <form method="POST" action="/admin/flagged-reviews/{{ f.id }}/dismiss" style="display:inline;">
+                <button type="submit" class="btn-sm btn-dismiss"><i class="fa-solid fa-check"></i> Dismiss Flag</button>
+            </form>
+            <form method="POST" action="/admin/flagged-reviews/{{ f.id }}/delete-review" style="display:inline;" onsubmit="return confirm('Permanently delete this review?')">
+                <button type="submit" class="btn-sm btn-del"><i class="fa-solid fa-trash"></i> Delete Review</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty"><i class="fa-solid fa-thumbs-up"></i> No flagged reviews.</div>
+{% endif %}
+</body>
+</html>

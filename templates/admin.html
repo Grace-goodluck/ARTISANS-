@@ -34,6 +34,12 @@
         .btn-verify:hover { background: rgba(34,180,34,0.35); }
         .btn-del { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); }
         .btn-del:hover { background: rgba(200,50,50,0.35); }
+        .btn-promote { background: rgba(196,155,58,0.15); color: #c49b3a; border: 1px solid rgba(196,155,58,0.4); }
+        .btn-promote:hover { background: rgba(196,155,58,0.3); }
+        .btn-feature { background: rgba(100,200,100,0.15); color: #66dd66; border: 1px solid rgba(100,200,100,0.4); }
+        .btn-feature:hover { background: rgba(100,200,100,0.3); }
+        .badge-promoted { background: rgba(196,155,58,0.2); color: #c49b3a; border: 1px solid rgba(196,155,58,0.4); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 800; }
+        .badge-featured-week { background: rgba(100,200,100,0.2); color: #66dd66; border: 1px solid rgba(100,200,100,0.4); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 800; }
         .artisan-thumb { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(196,155,58,0.3); }
         .msg-text { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,248,220,0.7); }
         @media(max-width:700px) { table { font-size: 12px; } td,th { padding: 8px; } }
@@ -43,7 +49,8 @@
 <nav>
     <a href="/" class="brand"><i class="fa-solid fa-shield-halved"></i> Admin Panel</a>
     <a href="/artisans"><i class="fa-solid fa-users"></i> Artisans</a>
-    <a href="/admin/reports"><i class="fa-solid fa-flag"></i> Reports</a>
+    <a href="/admin/flagged-reviews"><i class="fa-solid fa-flag"></i> Flagged Reviews</a>
+    <a href="/admin/newsletter"><i class="fa-solid fa-envelope-open-text"></i> Newsletter</a>
     <a href="/requests"><i class="fa-solid fa-list-check"></i> Service Requests</a>
     <a href="/"><i class="fa-solid fa-house"></i> Home</a>
     <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
@@ -63,19 +70,28 @@
         <h2><i class="fa-solid fa-hammer"></i> Artisans</h2>
         <div style="overflow-x:auto;">
         <table>
-            <thead><tr><th>Photo</th><th>Name</th><th>Skill</th><th>Location</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Photo</th><th>Name</th><th>Skill</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
             {% for a in artisans %}
             <tr>
                 <td>{% if a.image %}<img src="{{ a.image if a.image.startswith('http') else '/static/uploads/'+a.image }}" class="artisan-thumb">{% else %}<i class="fa-solid fa-user" style="color:rgba(196,155,58,0.4);font-size:24px;"></i>{% endif %}</td>
-                <td><a href="/artisan/{{ a.id }}" style="color:#c49b3a;text-decoration:none;">{{ a.name }}</a></td>
+                <td>
+                    <a href="/artisan/{{ a.id }}" style="color:#c49b3a;text-decoration:none;">{{ a.name }}</a>
+                    {% if a.is_promoted %}<span class="badge-promoted"><i class="fa-solid fa-bolt"></i> Promoted</span>{% endif %}
+                    {% if a.is_featured_week %}<span class="badge-featured-week"><i class="fa-solid fa-trophy"></i> Featured</span>{% endif %}
+                </td>
                 <td>{{ a.skill }}</td>
                 <td>{{ a.location }}</td>
-                <td>{{ a.phone }}</td>
                 <td>{% if a.verified %}<span class="badge-verified"><i class="fa-solid fa-check"></i> Verified</span>{% else %}<span class="badge-unverified">Unverified</span>{% endif %}</td>
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
                     <form method="POST" action="/admin/verify/{{ a.id }}" style="display:inline;">
                         <button class="btn-sm btn-verify" type="submit">{% if a.verified %}Unverify{% else %}Verify{% endif %}</button>
+                    </form>
+                    <form method="POST" action="/admin/promote/{{ a.id }}" style="display:inline;">
+                        <button class="btn-sm btn-promote" type="submit" title="{% if a.is_promoted %}Remove promotion{% else %}Promote to top{% endif %}"><i class="fa-solid fa-bolt"></i></button>
+                    </form>
+                    <form method="POST" action="/admin/featured/{{ a.id }}" style="display:inline;">
+                        <button class="btn-sm btn-feature" type="submit" title="{% if a.is_featured_week %}Remove featured{% else %}Set as Artisan of the Week{% endif %}"><i class="fa-solid fa-trophy"></i></button>
                     </form>
                     <form method="POST" action="/admin/delete-artisan/{{ a.id }}" style="display:inline;" onsubmit="return confirm('Delete {{ a.name }}?')">
                         <button class="btn-sm btn-del" type="submit"><i class="fa-solid fa-trash"></i></button>

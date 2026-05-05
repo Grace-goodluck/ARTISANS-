@@ -148,6 +148,29 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def make_referral_code(name):
+    import hashlib, time
+    raw = f"{name}{time.time()}"
+    return hashlib.md5(raw.encode()).hexdigest()[:8].upper()
+
+
+def calc_badges(artisan, avg_rating, review_count, response_rate):
+    badges = []
+    if artisan.get('verified'):
+        badges.append(('fa-circle-check', 'Verified', '#c49b3a'))
+    if artisan.get('is_promoted'):
+        badges.append(('fa-rocket', 'Promoted', '#e05c00'))
+    if float(avg_rating or 0) >= 4.5 and review_count >= 3:
+        badges.append(('fa-trophy', 'Top Rated', '#f0c040'))
+    if int(artisan.get('view_count') or 0) >= 100:
+        badges.append(('fa-fire', 'Popular', '#ff6b35'))
+    if int(artisan.get('experience') or 0) >= 5:
+        badges.append(('fa-medal', 'Experienced', '#aaa'))
+    if response_rate is not None and response_rate >= 80:
+        badges.append(('fa-bolt', 'Quick Responder', '#66dd66'))
+    return badges
+
+
 def send_email(to_email, subject, body):
     mail_user = os.environ.get('MAIL_USER')
     mail_pass = os.environ.get('MAIL_PASS')
@@ -345,9 +368,68 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS packages (
+            id {PK},
+            artisan_id INTEGER,
+            tier TEXT,
+            title TEXT,
+            description TEXT,
+            price TEXT,
+            delivery_days INTEGER
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS faqs (
+            id {PK},
+            artisan_id INTEGER,
+            question TEXT,
+            answer TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS flagged_reviews (
+            id {PK},
+            review_id INTEGER,
+            reporter_name TEXT,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS jobs (
+            id {PK},
+            title TEXT,
+            skill_needed TEXT,
+            location TEXT,
+            budget TEXT,
+            description TEXT,
+            client_name TEXT,
+            client_phone TEXT,
+            status TEXT DEFAULT 'open',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS job_interests (
+            id {PK},
+            job_id INTEGER,
+            artisan_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     for col, definition in [
         ("business_hours", "TEXT"),
         ("photo_url", "TEXT"),
+        ("referral_code", "TEXT"),
+        ("is_promoted", "INTEGER DEFAULT 0"),
+        ("is_featured_week", "INTEGER DEFAULT 0"),
     ]:
         try:
             db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
@@ -410,9 +492,16 @@ def home():
         WHERE r.rating >= 4 AND r.comment IS NOT NULL AND r.comment != ''
         ORDER BY r.rating DESC, r.id DESC LIMIT 3
     """).fetchall()
+    featured_artisan = db_execute(conn, """
+        SELECT a.*,
+            COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
+        FROM artisans a WHERE a.is_featured_week=1 LIMIT 1
+    """).fetchone()
     conn.close()
     return render_template("home.html", artisan_count=artisan_count, categories=categories,
-                           skill_count=skill_count, testimonials=testimonials)
+                           skill_count=skill_count, testimonials=testimonials,
+                           featured_artisan=featured_artisan)
 
 
 @app.route("/artisans")
@@ -697,6 +786,8 @@ def artisan_profile(id):
         SELECT id, name, skill, location, image, is_available FROM artisans
         WHERE skill=? AND id!=? AND name IS NOT NULL AND name != '' LIMIT 3
     """, (artisan['skill'], id)).fetchall()
+    packages  = db_execute(conn, "SELECT * FROM packages WHERE artisan_id=? ORDER BY id", (id,)).fetchall()
+    faqs      = db_execute(conn, "SELECT * FROM faqs WHERE artisan_id=? ORDER BY id", (id,)).fetchall()
     is_bookmarked = False
     if 'user_id' in session:
         bm = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
@@ -711,6 +802,9 @@ def artisan_profile(id):
     contacted  = request.args.get('contacted') == '1'
     reported   = request.args.get('reported') == '1'
     completion = profile_completion(artisan)
+    badges     = calc_badges(artisan, average_rating, review_count, response_rate)
+    profile_url = request.host_url.rstrip('/') + f'/artisan/{id}'
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(profile_url)}"
 
     return render_template('artisan_profile_new.html',
         artisan=artisan, reviews=reviews,
@@ -718,7 +812,9 @@ def artisan_profile(id):
         portfolio=portfolio, is_bookmarked=is_bookmarked,
         contacted=contacted, reported=reported,
         completion=completion, related=related,
-        response_rate=response_rate, saves_count=saves_count)
+        response_rate=response_rate, saves_count=saves_count,
+        badges=badges, packages=packages, faqs=faqs,
+        qr_url=qr_url, profile_url=profile_url)
 
 
 @app.route('/api/suggestions')
@@ -785,19 +881,28 @@ def dashboard():
         conn.close()
         return redirect(url_for('add_artisan'))
     artisan    = dict(my_artisan)
-    msg_count   = db_execute(conn, "SELECT COUNT(*) as c FROM messages WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
-    rev_count   = db_execute(conn, "SELECT COUNT(*) as c FROM reviews  WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
-    saves_count = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
-    book_count  = db_execute(conn, "SELECT COUNT(*) as c FROM bookings WHERE artisan_id=? AND status='pending'", (artisan['id'],)).fetchone()['c']
-    avg_row     = db_execute(conn, "SELECT COALESCE(AVG(rating),0) as avg FROM reviews WHERE artisan_id=?", (artisan['id'],)).fetchone()
-    avg_rating  = round(float(avg_row['avg'] or 0), 1)
-    replied     = db_execute(conn, "SELECT COUNT(*) as c FROM reviews WHERE artisan_id=? AND reply IS NOT NULL AND reply != ''", (artisan['id'],)).fetchone()['c']
-    response_rate = int(replied * 100 / rev_count) if rev_count > 0 else None
-    recent_msgs = db_execute(conn, "SELECT * FROM messages WHERE artisan_id=? ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
+    msg_count      = db_execute(conn, "SELECT COUNT(*) as c FROM messages WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    rev_count      = db_execute(conn, "SELECT COUNT(*) as c FROM reviews  WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    saves_count    = db_execute(conn, "SELECT COUNT(*) as c FROM bookmarks WHERE artisan_id=?", (artisan['id'],)).fetchone()['c']
+    book_count     = db_execute(conn, "SELECT COUNT(*) as c FROM bookings WHERE artisan_id=? AND status='pending'", (artisan['id'],)).fetchone()['c']
+    completed_jobs = db_execute(conn, "SELECT COUNT(*) as c FROM bookings WHERE artisan_id=? AND status='completed'", (artisan['id'],)).fetchone()['c']
+    avg_row        = db_execute(conn, "SELECT COALESCE(AVG(rating),0) as avg FROM reviews WHERE artisan_id=?", (artisan['id'],)).fetchone()
+    avg_rating     = round(float(avg_row['avg'] or 0), 1)
+    replied        = db_execute(conn, "SELECT COUNT(*) as c FROM reviews WHERE artisan_id=? AND reply IS NOT NULL AND reply != ''", (artisan['id'],)).fetchone()['c']
+    response_rate  = int(replied * 100 / rev_count) if rev_count > 0 else None
+    recent_msgs    = db_execute(conn, "SELECT * FROM messages WHERE artisan_id=? ORDER BY created_at DESC LIMIT 5", (artisan['id'],)).fetchall()
+    # ensure referral code exists
+    if not artisan.get('referral_code'):
+        code = make_referral_code(artisan['name'])
+        db_execute(conn, "UPDATE artisans SET referral_code=? WHERE id=?", (code, artisan['id']))
+        conn.commit()
+        artisan['referral_code'] = code
     conn.close()
+    referral_url = request.host_url.rstrip('/') + '/r/' + artisan['referral_code']
     return render_template('dashboard.html', artisan=artisan, msg_count=msg_count,
                            review_count=rev_count, avg_rating=avg_rating, recent_msgs=recent_msgs,
-                           saves_count=saves_count, book_count=book_count, response_rate=response_rate)
+                           saves_count=saves_count, book_count=book_count, response_rate=response_rate,
+                           completed_jobs=completed_jobs, referral_url=referral_url)
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])
@@ -1031,7 +1136,7 @@ def admin_panel():
     if not is_admin():
         return redirect(url_for('home'))
     conn = get_db_connection()
-    artisans = db_execute(conn, "SELECT * FROM artisans ORDER BY id DESC").fetchall()
+    artisans = db_execute(conn, "SELECT * FROM artisans ORDER BY is_promoted DESC, id DESC").fetchall()
     users = db_execute(conn, "SELECT * FROM users ORDER BY id DESC").fetchall()
     msgs = db_execute(conn, """
         SELECT m.*, a.name as artisan_name FROM messages m
@@ -1182,6 +1287,235 @@ def delete_report(report_id):
     conn.commit()
     conn.close()
     return redirect(url_for('admin_reports'))
+
+
+# ── Packages ──────────────────────────────────────────────────────────────────
+@app.route('/artisan/<int:id>/packages/add', methods=['POST'])
+def add_package(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT user_id FROM artisans WHERE id=?", (id,)).fetchone()
+    if a and a['user_id'] == session['user_id']:
+        db_execute(conn, "INSERT INTO packages (artisan_id, tier, title, description, price, delivery_days) VALUES (?,?,?,?,?,?)",
+            (id, request.form.get('tier',''), request.form.get('title',''),
+             request.form.get('description',''), request.form.get('price',''),
+             request.form.get('delivery_days') or None))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '#packages')
+
+
+@app.route('/artisan/<int:id>/packages/<int:pkg_id>/delete', methods=['POST'])
+def delete_package(id, pkg_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    db_execute(conn, "DELETE FROM packages WHERE id=? AND artisan_id=?", (pkg_id, id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '#packages')
+
+
+# ── FAQs ──────────────────────────────────────────────────────────────────────
+@app.route('/artisan/<int:id>/faq/add', methods=['POST'])
+def add_faq(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT user_id FROM artisans WHERE id=?", (id,)).fetchone()
+    if a and a['user_id'] == session['user_id']:
+        db_execute(conn, "INSERT INTO faqs (artisan_id, question, answer) VALUES (?,?,?)",
+            (id, request.form.get('question',''), request.form.get('answer','')))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '#faq')
+
+
+@app.route('/artisan/<int:id>/faq/<int:faq_id>/delete', methods=['POST'])
+def delete_faq(id, faq_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    db_execute(conn, "DELETE FROM faqs WHERE id=? AND artisan_id=?", (faq_id, id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('artisan_profile', id=id) + '#faq')
+
+
+# ── Flag review ────────────────────────────────────────────────────────────────
+@app.route('/review/<int:review_id>/flag', methods=['POST'])
+def flag_review(review_id):
+    conn = get_db_connection()
+    db_execute(conn, "INSERT INTO flagged_reviews (review_id, reporter_name, reason) VALUES (?,?,?)",
+        (review_id, request.form.get('reporter_name','Anonymous'), request.form.get('reason','')))
+    conn.commit()
+    conn.close()
+    return ('', 204)
+
+
+# ── Referral ───────────────────────────────────────────────────────────────────
+@app.route('/r/<code>')
+def referral_redirect(code):
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT id FROM artisans WHERE referral_code=?", (code,)).fetchone()
+    conn.close()
+    if a:
+        return redirect(url_for('artisan_profile', id=a['id']))
+    return redirect(url_for('artisans'))
+
+
+# ── Job board ──────────────────────────────────────────────────────────────────
+@app.route('/jobs')
+def jobs():
+    conn = get_db_connection()
+    all_jobs = db_execute(conn, "SELECT * FROM jobs WHERE status='open' ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return render_template('jobs.html', jobs=all_jobs, posted=request.args.get('posted'))
+
+
+@app.route('/post-job', methods=['GET', 'POST'])
+def post_job():
+    if request.method == 'POST':
+        conn = get_db_connection()
+        db_execute(conn, "INSERT INTO jobs (title, skill_needed, location, budget, description, client_name, client_phone) VALUES (?,?,?,?,?,?,?)",
+            (request.form.get('title',''), request.form.get('skill_needed',''),
+             request.form.get('location',''), request.form.get('budget',''),
+             request.form.get('description',''), request.form.get('client_name',''),
+             request.form.get('client_phone','')))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('jobs') + '?posted=1')
+    return render_template('post_job.html')
+
+
+@app.route('/job/<int:job_id>/interest', methods=['POST'])
+def job_interest(job_id):
+    conn = get_db_connection()
+    my_artisan = None
+    if 'user_id' in session:
+        my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    if my_artisan:
+        existing = db_execute(conn, "SELECT id FROM job_interests WHERE job_id=? AND artisan_id=?", (job_id, my_artisan['id'])).fetchone()
+        if not existing:
+            db_execute(conn, "INSERT INTO job_interests (job_id, artisan_id) VALUES (?,?)", (job_id, my_artisan['id']))
+            conn.commit()
+    conn.close()
+    return redirect(url_for('jobs'))
+
+
+# ── Admin: newsletter ──────────────────────────────────────────────────────────
+@app.route('/admin/newsletter', methods=['GET', 'POST'])
+def admin_newsletter():
+    if not is_admin():
+        return redirect(url_for('home'))
+    msg = ''
+    if request.method == 'POST':
+        subject = request.form.get('subject', '')
+        body    = request.form.get('body', '')
+        target  = request.form.get('target', 'all')
+        conn = get_db_connection()
+        if target == 'artisans':
+            rows = db_execute(conn, "SELECT DISTINCT email FROM artisans WHERE email IS NOT NULL AND email != ''").fetchall()
+        elif target == 'users':
+            rows = db_execute(conn, "SELECT email FROM users WHERE email IS NOT NULL AND email != ''").fetchall()
+        else:
+            a_rows = db_execute(conn, "SELECT DISTINCT email FROM artisans WHERE email IS NOT NULL AND email != ''").fetchall()
+            u_rows = db_execute(conn, "SELECT email FROM users WHERE email IS NOT NULL AND email != ''").fetchall()
+            rows = list({r['email'] for r in a_rows + u_rows if r.get('email')})
+            rows = [{'email': e} for e in rows]
+        conn.close()
+        sent = 0
+        for r in rows:
+            try:
+                send_email(r['email'], subject, body)
+                sent += 1
+            except Exception:
+                pass
+        msg = f"Newsletter sent to {sent} recipient(s)."
+    return render_template('admin_newsletter.html', msg=msg)
+
+
+# ── Admin: flagged reviews ─────────────────────────────────────────────────────
+@app.route('/admin/flagged-reviews')
+def admin_flagged_reviews():
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    flags = db_execute(conn, """
+        SELECT f.*, r.comment, r.rating, r.artisan_id,
+               a.name as artisan_name
+        FROM flagged_reviews f
+        JOIN reviews r ON r.id=f.review_id
+        LEFT JOIN artisans a ON a.id=r.artisan_id
+        ORDER BY f.created_at DESC
+    """).fetchall()
+    conn.close()
+    return render_template('admin_flagged.html', flags=flags)
+
+
+@app.route('/admin/flagged-reviews/<int:flag_id>/dismiss', methods=['POST'])
+def dismiss_flag(flag_id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    db_execute(conn, "DELETE FROM flagged_reviews WHERE id=?", (flag_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_flagged_reviews'))
+
+
+@app.route('/admin/flagged-reviews/<int:flag_id>/delete-review', methods=['POST'])
+def delete_flagged_review(flag_id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    flag = db_execute(conn, "SELECT review_id FROM flagged_reviews WHERE id=?", (flag_id,)).fetchone()
+    if flag:
+        db_execute(conn, "DELETE FROM reviews WHERE id=?", (flag['review_id'],))
+        db_execute(conn, "DELETE FROM flagged_reviews WHERE review_id=?", (flag['review_id'],))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_flagged_reviews'))
+
+
+# ── Admin: featured week + promote ────────────────────────────────────────────
+@app.route('/admin/featured/<int:id>', methods=['POST'])
+def set_featured_week(id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    db_execute(conn, "UPDATE artisans SET is_featured_week=0")
+    db_execute(conn, "UPDATE artisans SET is_featured_week=1 WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/promote/<int:id>', methods=['POST'])
+def toggle_promote(id):
+    if not is_admin():
+        return redirect(url_for('home'))
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT is_promoted FROM artisans WHERE id=?", (id,)).fetchone()
+    db_execute(conn, "UPDATE artisans SET is_promoted=? WHERE id=?", (0 if a and a['is_promoted'] else 1, id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_panel'))
+
+
+# ── Unread notifications count API ────────────────────────────────────────────
+@app.route('/api/unread-count')
+def unread_count():
+    if 'user_id' not in session:
+        return jsonify({'count': 0})
+    conn = get_db_connection()
+    my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    count = 0
+    if my_artisan:
+        count = db_execute(conn, "SELECT COUNT(*) as c FROM messages WHERE artisan_id=?", (my_artisan['id'],)).fetchone()['c']
+    conn.close()
+    return jsonify({'count': count})
 
 
 @app.route('/book/<int:id>', methods=['GET', 'POST'])

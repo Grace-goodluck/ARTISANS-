@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newsletter | Admin | Artisaan's Crib</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; padding: 32px 24px; }
+        a.back { color: #c49b3a; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+        h1 { font-size: 24px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { color: rgba(255,248,220,0.5); font-size: 13px; margin-bottom: 28px; }
+        .wrap { max-width: 600px; }
+        .toast { background: #22b422; color: #fff; padding: 12px 18px; border-radius: 10px; margin-bottom: 20px; font-weight: 700; }
+        .field { margin-bottom: 18px; }
+        .field label { display: block; font-size: 12px; font-weight: 700; color: #c49b3a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 7px; }
+        .field input, .field textarea, .field select { width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.07); border: 1px solid rgba(196,155,58,0.3); border-radius: 8px; color: #fff8dc; font-size: 14px; font-family: inherit; outline: none; }
+        .field input:focus, .field textarea:focus, .field select:focus { border-color: #c49b3a; }
+        .field select option { background: #022f05; }
+        .field textarea { resize: vertical; }
+        .btn-send { background: #c49b3a; color: #022f05; font-weight: 800; font-size: 15px; padding: 12px 32px; border: none; border-radius: 25px; cursor: pointer; }
+        .note { font-size: 12px; color: rgba(255,248,220,0.4); margin-top: 6px; }
+    </style>
+</head>
+<body>
+<a href="/admin" class="back"><i class="fa-solid fa-arrow-left"></i> Back to Admin</a>
+<div class="wrap">
+    <h1><i class="fa-solid fa-envelope-open-text"></i> Send Newsletter</h1>
+    <p class="sub">Send an email broadcast to all users or artisans. Requires MAIL_USER and MAIL_PASS environment variables to be set.</p>
+
+    {% if msg %}
+    <div class="toast"><i class="fa-solid fa-circle-check"></i> {{ msg }}</div>
+    {% endif %}
+
+    <form method="POST">
+        <div class="field">
+            <label>Send To</label>
+            <select name="target">
+                <option value="all">Everyone (users + artisans)</option>
+                <option value="artisans">Artisans only</option>
+                <option value="users">Users only</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Subject</label>
+            <input type="text" name="subject" placeholder="Email subject line" required>
+        </div>
+        <div class="field">
+            <label>Message Body</label>
+            <textarea name="body" rows="10" placeholder="Write your newsletter message here..." required></textarea>
+            <p class="note">Plain text only. Keep it concise and relevant.</p>
+        </div>
+        <button type="submit" class="btn-send" onclick="return confirm('Send this newsletter to all selected recipients?')">
+            <i class="fa-solid fa-paper-plane"></i> Send Newsletter
+        </button>
+    </form>
+</div>
+</body>
+</html>
