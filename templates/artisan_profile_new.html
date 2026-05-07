@@ -181,7 +181,7 @@
             margin-left: 4px;
         }
 
-        .avail-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-top: 8px; }
+        .avail-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-top: 0; }
         .avail-badge.yes { background: rgba(34,180,34,0.15); color: #66dd66; border: 1px solid rgba(34,180,34,0.3); }
         .avail-badge.no  { background: rgba(200,50,50,0.15);  color: #ff7777; border: 1px solid rgba(200,50,50,0.3); }
 
@@ -490,11 +490,6 @@
             {% endfor %}
         </div>
         {% endif %}
-        {% if artisan.is_available %}
-            <span class="avail-badge yes"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Available for hire</span>
-        {% else %}
-            <span class="avail-badge no"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Currently busy</span>
-        {% endif %}
         {% if session.user_id == artisan.user_id %}
         <div class="completion-wrap">
             <div class="completion-label">Profile completion: {{ completion }}%</div>
@@ -512,6 +507,11 @@
                 <span class="rating-label">{{ average_rating }} · {{ review_count }} review{{ 's' if review_count != 1 }}</span>
             {% else %}
                 <span class="rating-label">No ratings yet</span>
+            {% endif %}
+            {% if artisan.is_available %}
+                <span class="avail-badge yes"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Available for hire</span>
+            {% else %}
+                <span class="avail-badge no"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Currently busy</span>
             {% endif %}
         </div>
     </div>
