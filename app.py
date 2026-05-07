@@ -461,6 +461,29 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS conversations (
+            id {PK},
+            artisan_id INTEGER,
+            client_name TEXT,
+            client_phone TEXT,
+            client_user_id INTEGER,
+            last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id {PK},
+            conversation_id INTEGER,
+            sender TEXT,
+            body TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()  # commit all new table creations before alter loops that may rollback
 
     for col, definition in [
@@ -499,6 +522,7 @@ def create_table():
         ("referral_code", "TEXT"),
         ("is_promoted", "INTEGER DEFAULT 0"),
         ("is_featured_week", "INTEGER DEFAULT 0"),
+        ("away_message", "TEXT"),
     ]:
         try:
             db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
@@ -1072,7 +1096,7 @@ def edit_artisan(id):
         fields = ['name','email','dob','gender','languages','skill','experience',
                   'certifications','availability','price_range','service_area',
                   'phone','whatsapp','instagram','facebook','tiktok','twitter',
-                  'youtube','website','description','custom_orders','business_hours','video_url']
+                  'youtube','website','description','custom_orders','business_hours','video_url','away_message']
         u = {f: request.form.get(f, '') for f in fields}
         city  = request.form.get('city', '')
         state = request.form.get('state', '')
@@ -1089,13 +1113,13 @@ def edit_artisan(id):
             name=?,email=?,dob=?,gender=?,languages=?,skill=?,experience=?,
             certifications=?,availability=?,price_range=?,location=?,service_area=?,
             phone=?,whatsapp=?,instagram=?,facebook=?,tiktok=?,twitter=?,
-            youtube=?,website=?,description=?,custom_orders=?,marketing=?,image=?,business_hours=?,video_url=?
+            youtube=?,website=?,description=?,custom_orders=?,marketing=?,image=?,business_hours=?,video_url=?,away_message=?
             WHERE id=?''',
             (u['name'],u['email'],u['dob'],u['gender'],u['languages'],u['skill'],u['experience'],
              u['certifications'],u['availability'],u['price_range'],u['location'],u['service_area'],
              u['phone'],u['whatsapp'],u['instagram'],u['facebook'],u['tiktok'],u['twitter'],
              u['youtube'],u['website'],u['description'],u['custom_orders'],u['marketing'],u['image'],
-             u['business_hours'],u['video_url'],id))
+             u['business_hours'],u['video_url'],u['away_message'],id))
 
         for photo in request.files.getlist('portfolio')[:5]:
             if photo and photo.filename and allowed_file(photo.filename):
@@ -1946,6 +1970,153 @@ def reject_verification(req_id):
     conn.commit()
     conn.close()
     return redirect(url_for('admin_verification_requests'))
+
+
+@app.route('/chat/<int:artisan_id>', methods=['GET', 'POST'])
+def chat(artisan_id):
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (artisan_id,)).fetchone()
+    if not artisan:
+        conn.close()
+        return redirect(url_for('artisans'))
+    artisan = dict(artisan)
+
+    # identify client
+    client_user_id = session.get('user_id')
+    client_name  = session.get('chat_name', '')
+    client_phone = session.get('chat_phone', '')
+
+    # If client is logged in, fetch their name from users table
+    if client_user_id and not client_name:
+        u = db_execute(conn, "SELECT name FROM users WHERE id=?", (client_user_id,)).fetchone()
+        if u:
+            client_name = u['name']
+
+    error = ''
+    conv = None
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'identify')
+        if action == 'identify':
+            client_name  = request.form.get('client_name', '').strip()
+            client_phone = request.form.get('client_phone', '').strip()
+            if not client_name or not client_phone:
+                error = 'Please enter your name and phone number.'
+            else:
+                session['chat_name']  = client_name
+                session['chat_phone'] = client_phone
+        elif action == 'send':
+            body = request.form.get('body', '').strip()
+            if body and client_name and client_phone:
+                # find or create conversation
+                if client_user_id:
+                    conv = db_execute(conn, "SELECT * FROM conversations WHERE artisan_id=? AND client_user_id=?", (artisan_id, client_user_id)).fetchone()
+                else:
+                    conv = db_execute(conn, "SELECT * FROM conversations WHERE artisan_id=? AND client_phone=?", (artisan_id, client_phone)).fetchone()
+                if not conv:
+                    db_execute(conn, "INSERT INTO conversations (artisan_id, client_name, client_phone, client_user_id) VALUES (?,?,?,?)",
+                        (artisan_id, client_name, client_phone, client_user_id))
+                    conn.commit()
+                    if client_user_id:
+                        conv = db_execute(conn, "SELECT * FROM conversations WHERE artisan_id=? AND client_user_id=?", (artisan_id, client_user_id)).fetchone()
+                    else:
+                        conv = db_execute(conn, "SELECT * FROM conversations WHERE artisan_id=? AND client_phone=?", (artisan_id, client_phone)).fetchone()
+                conv_id = conv['id']
+                db_execute(conn, "INSERT INTO chat_messages (conversation_id, sender, body) VALUES (?,?,?)", (conv_id, 'client', body))
+                ts_sql = "NOW()" if DATABASE_URL else "CURRENT_TIMESTAMP"
+                db_execute(conn, f"UPDATE conversations SET last_message_at={ts_sql} WHERE id=?", (conv_id,))
+                conn.commit()
+                # notify artisan
+                if artisan.get('email'):
+                    send_email(artisan['email'], f"New message from {client_name} | Artisaan's Crib",
+                        f"Hi {artisan['name']},\n\n{client_name} sent you a message:\n\n\"{body}\"\n\nReply from your inbox: artisan-service-app.vercel.app/inbox\n\nArtisaan's Crib")
+        conn.close()
+        return redirect(url_for('chat', artisan_id=artisan_id))
+
+    # Load conversation and messages
+    messages = []
+    if client_name and client_phone:
+        if client_user_id:
+            conv = db_execute(conn, "SELECT * FROM conversations WHERE artisan_id=? AND client_user_id=?", (artisan_id, client_user_id)).fetchone()
+        else:
+            conv = db_execute(conn, "SELECT * FROM conversations WHERE artisan_id=? AND client_phone=?", (artisan_id, client_phone)).fetchone()
+        if conv:
+            messages = db_execute(conn, "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY created_at ASC", (conv['id'],)).fetchall()
+            db_execute(conn, "UPDATE chat_messages SET is_read=1 WHERE conversation_id=? AND sender='artisan'", (conv['id'],))
+            conn.commit()
+    conn.close()
+    return render_template('chat.html', artisan=artisan, messages=messages,
+                           client_name=client_name, client_phone=client_phone, error=error)
+
+
+@app.route('/inbox')
+def inbox():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    if not artisan:
+        conn.close()
+        return redirect(url_for('dashboard'))
+    convs = db_execute(conn, """
+        SELECT c.*,
+            (SELECT body FROM chat_messages WHERE conversation_id=c.id ORDER BY created_at DESC LIMIT 1) as last_msg,
+            (SELECT COUNT(*) FROM chat_messages WHERE conversation_id=c.id AND sender='client' AND is_read=0) as unread
+        FROM conversations c WHERE c.artisan_id=?
+        ORDER BY c.last_message_at DESC
+    """, (artisan['id'],)).fetchall()
+    conn.close()
+    return render_template('inbox.html', convs=convs)
+
+
+@app.route('/inbox/<int:conv_id>', methods=['GET', 'POST'])
+def inbox_thread(conv_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
+    if not artisan:
+        conn.close()
+        return redirect(url_for('dashboard'))
+    conv = db_execute(conn, "SELECT * FROM conversations WHERE id=? AND artisan_id=?", (conv_id, artisan['id'])).fetchone()
+    if not conv:
+        conn.close()
+        return redirect(url_for('inbox'))
+    if request.method == 'POST':
+        body = request.form.get('body', '').strip()
+        if body:
+            db_execute(conn, "INSERT INTO chat_messages (conversation_id, sender, body) VALUES (?,?,?)", (conv_id, 'artisan', body))
+            ts_sql = "NOW()" if DATABASE_URL else "CURRENT_TIMESTAMP"
+            db_execute(conn, f"UPDATE conversations SET last_message_at={ts_sql} WHERE id=?", (conv_id,))
+            conn.commit()
+        conn.close()
+        return redirect(url_for('inbox_thread', conv_id=conv_id))
+    messages = db_execute(conn, "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY created_at ASC", (conv_id,)).fetchall()
+    db_execute(conn, "UPDATE chat_messages SET is_read=1 WHERE conversation_id=? AND sender='client'", (conv_id,))
+    conn.commit()
+    conn.close()
+    return render_template('thread.html', conv=conv, messages=messages)
+
+
+@app.route('/api/chat-poll/<int:id_param>')
+def chat_poll(id_param):
+    after    = request.args.get('after', 0)
+    client   = request.args.get('client', '')
+    is_conv  = request.args.get('conv', '')
+    conn     = get_db_connection()
+    if is_conv:
+        conv_id = id_param  # id_param is conv_id (artisan inbox thread)
+    elif client:
+        conv = db_execute(conn, "SELECT id FROM conversations WHERE artisan_id=? AND client_phone=?", (id_param, client)).fetchone()
+        conv_id = conv['id'] if conv else None
+    else:
+        conv_id = None
+    if not conv_id:
+        conn.close()
+        return jsonify([])
+    msgs = db_execute(conn, "SELECT * FROM chat_messages WHERE conversation_id=? AND id>? ORDER BY created_at ASC", (conv_id, after)).fetchall()
+    conn.close()
+    return jsonify([{'id': m['id'], 'sender': m['sender'], 'body': m['body'], 'created_at': str(m['created_at'])} for m in msgs])
 
 
 @app.route('/quote/<int:id>', methods=['GET', 'POST'])

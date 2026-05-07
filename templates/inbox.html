@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox | Artisaan's Crib</title>
+    <meta name="theme-color" content="#022f05">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #022f05; color: #fff8dc; min-height: 100vh; }
+        nav { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: rgba(2,47,5,0.97); border-bottom: 1px solid rgba(196,155,58,0.2); }
+        nav a { color: #fff8dc; text-decoration: none; font-size: 14px; opacity: 0.85; }
+        nav a:hover { color: #c49b3a; opacity: 1; }
+        nav a:first-child { margin-right: auto; font-weight: 800; font-size: 16px; opacity: 1; }
+        .wrap { max-width: 640px; margin: 0 auto; padding: 36px 20px 80px; }
+        h1 { font-size: 22px; font-weight: 900; color: #c49b3a; margin-bottom: 6px; }
+        .sub { font-size: 13px; color: rgba(255,248,220,0.4); margin-bottom: 28px; }
+        .conv-card { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(196,155,58,0.12); border-radius: 14px; padding: 16px 18px; margin-bottom: 10px; text-decoration: none; color: inherit; transition: border-color 0.2s; cursor: pointer; }
+        .conv-card:hover { border-color: rgba(196,155,58,0.4); background: rgba(255,255,255,0.07); }
+        .conv-avatar { width: 46px; height: 46px; border-radius: 50%; background: rgba(196,155,58,0.12); display: flex; align-items: center; justify-content: center; color: #c49b3a; font-size: 20px; flex-shrink: 0; }
+        .conv-info { flex: 1; min-width: 0; }
+        .conv-name { font-size: 15px; font-weight: 800; }
+        .conv-phone { font-size: 12px; color: rgba(255,248,220,0.4); margin-top: 2px; }
+        .conv-preview { font-size: 13px; color: rgba(255,248,220,0.55); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .conv-meta { text-align: right; flex-shrink: 0; }
+        .conv-time { font-size: 11px; color: rgba(255,248,220,0.3); margin-bottom: 6px; }
+        .unread-badge { background: #c49b3a; color: #022f05; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
+        .empty { text-align: center; padding: 60px 20px; color: rgba(255,248,220,0.35); }
+        .empty i { font-size: 48px; display: block; margin-bottom: 14px; color: rgba(196,155,58,0.25); }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
+    <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+</nav>
+<div class="wrap">
+    <h1><i class="fa-solid fa-inbox"></i> Inbox</h1>
+    <p class="sub">{{ convs|length }} conversation{{ 's' if convs|length != 1 }}</p>
+
+    {% if convs %}
+        {% for c in convs %}
+        <a href="/inbox/{{ c.id }}" class="conv-card">
+            <div class="conv-avatar"><i class="fa-solid fa-user"></i></div>
+            <div class="conv-info">
+                <div class="conv-name">{{ c.client_name }}</div>
+                <div class="conv-phone"><i class="fa-solid fa-phone" style="color:#c49b3a;font-size:10px;"></i> {{ c.client_phone }}</div>
+                {% if c.last_msg %}<div class="conv-preview">{{ c.last_msg }}</div>{% endif %}
+            </div>
+            <div class="conv-meta">
+                <div class="conv-time">{{ (c.last_message_at or '')|string|truncate(10,true,'') }}</div>
+                {% if c.unread %}<span class="unread-badge">{{ c.unread }}</span>{% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    {% else %}
+    <div class="empty">
+        <i class="fa-solid fa-comment-slash"></i>
+        No messages yet. Share your profile to start receiving chats.
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>
