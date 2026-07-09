@@ -74,6 +74,7 @@
 </div>
 
 <form method="POST" class="chat-input-row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="text" name="body" id="msg-input" class="chat-input" placeholder="Type your reply..." required autocomplete="off">
     <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
 </form>

@@ -6,34 +6,48 @@
     <title>Admin Panel | Artisaan's Crib</title>
     <meta name="theme-color" content="#022f05">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #011a02; color: #fff8dc; min-height: 100vh; }
-        nav { display: flex; align-items: center; gap: 20px; padding: 14px 32px; background: #022f05; border-bottom: 2px solid #c49b3a; }
+        nav { display: flex; align-items: center; gap: 20px; padding: 14px 32px; background: #022f05; border-bottom: 2px solid #c49b3a; flex-wrap: wrap; }
         nav .brand { font-size: 18px; font-weight: 900; color: #c49b3a; text-decoration: none; margin-right: auto; }
         nav a { color: #fff8dc; text-decoration: none; font-size: 14px; opacity: 0.8; }
         nav a:hover { color: #c49b3a; opacity: 1; }
 
         .wrap { max-width: 1200px; margin: 0 auto; padding: 36px 24px 80px; }
         h1 { font-size: 26px; font-weight: 900; color: #c49b3a; margin-bottom: 8px; }
-        .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 36px; }
-        .stat { background: rgba(196,155,58,0.1); border: 1px solid rgba(196,155,58,0.25); border-radius: 12px; padding: 20px 28px; text-align: center; }
-        .stat .num { font-size: 32px; font-weight: 900; color: #c49b3a; }
-        .stat .lbl { font-size: 13px; color: rgba(255,248,220,0.6); margin-top: 4px; }
+        .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        .stat { background: rgba(196,155,58,0.1); border: 1px solid rgba(196,155,58,0.25); border-radius: 12px; padding: 20px 28px; text-align: center; flex: 1; min-width: 130px; }
+        .stat .num { font-size: 28px; font-weight: 900; color: #c49b3a; }
+        .stat .lbl { font-size: 12px; color: rgba(255,248,220,0.6); margin-top: 4px; }
+        .stat.warn .num { color: #ff9966; }
+        .stat.danger .num { color: #ff7777; }
+
+        .charts { display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 18px; margin-bottom: 40px; }
+        .chart-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(196,155,58,0.2); border-radius: 14px; padding: 18px; }
+        .chart-card h3 { font-size: 13px; font-weight: 800; color: #c49b3a; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .chart-card canvas { max-height: 220px; }
 
         .section { margin-bottom: 48px; }
-        .section h2 { font-size: 18px; font-weight: 800; color: #fff8dc; margin-bottom: 16px; border-bottom: 1px solid rgba(196,155,58,0.2); padding-bottom: 10px; }
+        .section h2 { font-size: 18px; font-weight: 800; color: #fff8dc; margin-bottom: 16px; border-bottom: 1px solid rgba(196,155,58,0.2); padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .section h2 a { font-size: 12px; font-weight: 700; color: #c49b3a; margin-left: auto; text-decoration: none; opacity: 0.8; }
+        .section h2 a:hover { opacity: 1; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th { background: rgba(196,155,58,0.12); color: #c49b3a; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
         td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
         tr:hover td { background: rgba(255,255,255,0.03); }
         .badge-verified { background: rgba(34,180,34,0.2); color: #66dd66; border: 1px solid rgba(34,180,34,0.4); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
         .badge-unverified { background: rgba(255,255,255,0.06); color: rgba(255,248,220,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 3px 10px; font-size: 11px; }
+        .badge-suspended { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 800; }
+        .badge-reported { background: rgba(255,153,102,0.15); color: #ff9966; border: 1px solid rgba(255,153,102,0.4); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 800; }
         .btn-sm { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; }
         .btn-verify { background: rgba(34,180,34,0.2); color: #66dd66; border: 1px solid rgba(34,180,34,0.4); }
         .btn-verify:hover { background: rgba(34,180,34,0.35); }
         .btn-del { background: rgba(200,50,50,0.2); color: #ff7777; border: 1px solid rgba(200,50,50,0.4); }
         .btn-del:hover { background: rgba(200,50,50,0.35); }
+        .btn-suspend { background: rgba(255,153,102,0.15); color: #ff9966; border: 1px solid rgba(255,153,102,0.4); }
+        .btn-suspend:hover { background: rgba(255,153,102,0.3); }
         .btn-promote { background: rgba(196,155,58,0.15); color: #c49b3a; border: 1px solid rgba(196,155,58,0.4); }
         .btn-promote:hover { background: rgba(196,155,58,0.3); }
         .btn-feature { background: rgba(100,200,100,0.15); color: #66dd66; border: 1px solid rgba(100,200,100,0.4); }
@@ -49,9 +63,10 @@
 <nav>
     <a href="/" class="brand"><i class="fa-solid fa-shield-halved"></i> Admin Panel</a>
     <a href="/artisans"><i class="fa-solid fa-users"></i> Artisans</a>
-    <a href="/admin/flagged-reviews"><i class="fa-solid fa-flag"></i> Flagged Reviews</a>
+    <a href="/admin/reports"><i class="fa-solid fa-triangle-exclamation"></i> Reports{% if open_reports %} ({{ open_reports }}){% endif %}</a>
+    <a href="/admin/flagged-reviews"><i class="fa-solid fa-flag"></i> Flagged Reviews{% if flagged_count %} ({{ flagged_count }}){% endif %}</a>
     <a href="/admin/newsletter"><i class="fa-solid fa-envelope-open-text"></i> Newsletter</a>
-    <a href="/admin/verification-requests"><i class="fa-solid fa-id-card"></i> Verify Requests</a>
+    <a href="/admin/verification-requests"><i class="fa-solid fa-id-card"></i> Verify Requests{% if pending_verifications %} ({{ pending_verifications }}){% endif %}</a>
     <a href="/requests"><i class="fa-solid fa-list-check"></i> Service Requests</a>
     <a href="/"><i class="fa-solid fa-house"></i> Home</a>
     <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
@@ -60,10 +75,29 @@
 <div class="wrap">
     <h1><i class="fa-solid fa-gauge"></i> Dashboard</h1>
     <div class="stats">
-        <div class="stat"><div class="num">{{ artisans|length }}</div><div class="lbl">Artisans</div></div>
-        <div class="stat"><div class="num">{{ users|length }}</div><div class="lbl">Users</div></div>
-        <div class="stat"><div class="num">{{ msgs|length }}</div><div class="lbl">Messages</div></div>
-        <div class="stat"><div class="num">{{ artisans|selectattr('verified')|list|length }}</div><div class="lbl">Verified</div></div>
+        <div class="stat"><div class="num">{{ total_artisans }}</div><div class="lbl">Artisans</div></div>
+        <div class="stat"><div class="num">{{ total_users }}</div><div class="lbl">Users</div></div>
+        <div class="stat"><div class="num">{{ verified_count }}</div><div class="lbl">Verified</div></div>
+        <div class="stat"><div class="num">&#8358;{{ '{:,.0f}'.format(total_revenue_naira) }}</div><div class="lbl">Total Revenue ({{ total_transactions }} sales)</div></div>
+        <div class="stat"><div class="num">{{ total_bookings }}</div><div class="lbl">Bookings ({{ completed_bookings }} completed)</div></div>
+        <div class="stat {% if open_reports %}warn{% endif %}"><div class="num">{{ open_reports }}</div><div class="lbl">Open Reports</div></div>
+        <div class="stat {% if suspended_users %}danger{% endif %}"><div class="num">{{ suspended_users }}</div><div class="lbl">Suspended Accounts</div></div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="charts">
+        <div class="chart-card">
+            <h3><i class="fa-solid fa-user-plus"></i> Sign-ups (last 6 months)</h3>
+            <canvas id="chartSignups"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3><i class="fa-solid fa-naira-sign"></i> Revenue (last 6 months)</h3>
+            <canvas id="chartRevenue"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3><i class="fa-solid fa-calendar-check"></i> Bookings (last 6 months)</h3>
+            <canvas id="chartBookings"></canvas>
+        </div>
     </div>
 
     <!-- ARTISANS -->
@@ -80,21 +114,31 @@
                     <a href="/artisan/{{ a.id }}" style="color:#c49b3a;text-decoration:none;">{{ a.name }}</a>
                     {% if a.is_promoted %}<span class="badge-promoted"><i class="fa-solid fa-bolt"></i> Promoted</span>{% endif %}
                     {% if a.is_featured_week %}<span class="badge-featured-week"><i class="fa-solid fa-trophy"></i> Featured</span>{% endif %}
+                    {% if a.is_suspended %}<span class="badge-suspended"><i class="fa-solid fa-ban"></i> Suspended</span>{% endif %}
+                    {% if a.report_count %}<span class="badge-reported"><i class="fa-solid fa-triangle-exclamation"></i> {{ a.report_count }} report{{ 's' if a.report_count != 1 }}</span>{% endif %}
                 </td>
                 <td>{{ a.skill }}</td>
                 <td>{{ a.location }}</td>
                 <td>{% if a.verified %}<span class="badge-verified"><i class="fa-solid fa-check"></i> Verified</span>{% else %}<span class="badge-unverified">Unverified</span>{% endif %}</td>
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
                     <form method="POST" action="/admin/verify/{{ a.id }}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn-sm btn-verify" type="submit">{% if a.verified %}Unverify{% else %}Verify{% endif %}</button>
                     </form>
                     <form method="POST" action="/admin/promote/{{ a.id }}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn-sm btn-promote" type="submit" title="{% if a.is_promoted %}Remove promotion{% else %}Promote to top{% endif %}"><i class="fa-solid fa-bolt"></i></button>
                     </form>
                     <form method="POST" action="/admin/featured/{{ a.id }}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn-sm btn-feature" type="submit" title="{% if a.is_featured_week %}Remove featured{% else %}Set as Artisan of the Week{% endif %}"><i class="fa-solid fa-trophy"></i></button>
                     </form>
-                    <form method="POST" action="/admin/delete-artisan/{{ a.id }}" style="display:inline;" onsubmit="return confirm('Delete {{ a.name }}?')">
+                    <form method="POST" action="/admin/suspend-artisan/{{ a.id }}" style="display:inline;" onsubmit="return confirm('{% if a.is_suspended %}Reinstate{% else %}Suspend{% endif %} {{ a.name }}? {% if not a.is_suspended %}This hides them from the site and blocks new bookings.{% endif %}')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn-sm btn-suspend" type="submit" title="{% if a.is_suspended %}Reinstate listing{% else %}Suspend listing{% endif %}"><i class="fa-solid fa-ban"></i></button>
+                    </form>
+                    <form method="POST" action="/admin/delete-artisan/{{ a.id }}" style="display:inline;" onsubmit="return confirm('Permanently delete {{ a.name }}? This cannot be undone.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn-sm btn-del" type="submit"><i class="fa-solid fa-trash"></i></button>
                     </form>
                 </td>
@@ -105,20 +149,71 @@
         </div>
     </div>
 
+    <!-- RECENT SIGN-UPS -->
+    <div class="section">
+        <h2><i class="fa-solid fa-user-plus"></i> Recent Sign-ups</h2>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for s in recent_signups %}
+            <tr>
+                <td>{{ s.name }}</td>
+                <td>{{ s.email }}</td>
+                <td style="color:rgba(255,248,220,0.45);white-space:nowrap;">{{ (s.created_at or '')|string|truncate(16,true,'') }}</td>
+                <td>{% if s.is_suspended %}<span class="badge-suspended">Suspended</span>{% else %}<span class="badge-verified">Active</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <!-- RECENT SALES -->
+    <div class="section">
+        <h2><i class="fa-solid fa-naira-sign"></i> Recent Sales</h2>
+        {% if recent_payments %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>Artisan</th><th>Client</th><th>Amount</th><th>Reference</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for p in recent_payments %}
+            <tr>
+                <td>{{ p.artisan_name or 'N/A' }}</td>
+                <td>{{ p.client_name }}</td>
+                <td style="color:#c49b3a;font-weight:800;">&#8358;{{ '{:,.0f}'.format(p.amount_kobo / 100) }}</td>
+                <td style="color:rgba(255,248,220,0.45);">{{ p.reference }}</td>
+                <td style="color:rgba(255,248,220,0.45);white-space:nowrap;">{{ (p.verified_at or '')|string|truncate(16,true,'') }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p style="color:rgba(255,248,220,0.4);">No sales yet.</p>
+        {% endif %}
+    </div>
+
     <!-- USERS -->
     <div class="section">
         <h2><i class="fa-solid fa-users"></i> Users</h2>
         <div style="overflow-x:auto;">
         <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
             {% for u in users %}
             <tr>
                 <td>{{ u.id }}</td>
                 <td>{{ u.name }}</td>
                 <td>{{ u.email }}</td>
-                <td>
-                    <form method="POST" action="/admin/delete-user/{{ u.id }}" style="display:inline;" onsubmit="return confirm('Delete user {{ u.name }}?')">
+                <td>{% if u.is_suspended %}<span class="badge-suspended"><i class="fa-solid fa-ban"></i> Suspended</span>{% else %}<span class="badge-verified">Active</span>{% endif %}</td>
+                <td style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <form method="POST" action="/admin/suspend-user/{{ u.id }}" style="display:inline;" onsubmit="return confirm('{% if u.is_suspended %}Reinstate{% else %}Suspend{% endif %} {{ u.name }}?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn-sm btn-suspend" type="submit">{% if u.is_suspended %}Reinstate{% else %}Suspend{% endif %}</button>
+                    </form>
+                    <form method="POST" action="/admin/delete-user/{{ u.id }}" style="display:inline;" onsubmit="return confirm('Permanently delete {{ u.name }}? This cannot be undone.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn-sm btn-del" type="submit"><i class="fa-solid fa-trash"></i> Delete</button>
                     </form>
                 </td>
@@ -154,5 +249,28 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+const goldColors = { line: '#c49b3a', fill: 'rgba(196,155,58,0.15)', grid: 'rgba(255,255,255,0.06)', text: 'rgba(255,248,220,0.6)' };
+function makeChart(id, labels, data, label, color) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    new Chart(el, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: color || goldColors.fill, borderColor: goldColors.line, borderWidth: 1, borderRadius: 4 }] },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: goldColors.text }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: goldColors.text }, grid: { color: goldColors.grid } }
+            }
+        }
+    });
+}
+makeChart('chartSignups', {{ signup_labels|safe }}, {{ signup_data|safe }}, 'New users');
+makeChart('chartRevenue', {{ revenue_labels|safe }}, {{ revenue_data|safe }}, 'Revenue (₦)', 'rgba(102,221,102,0.2)');
+makeChart('chartBookings', {{ bookings_labels|safe }}, {{ bookings_data|safe }}, 'Bookings');
+</script>
 </body>
 </html>

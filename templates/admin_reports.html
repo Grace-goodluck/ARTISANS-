@@ -45,11 +45,24 @@
             <td>{{ r.reporter_name }}</td>
             <td>{{ r.reason }}</td>
             <td>{{ (r.created_at or '')|string|truncate(16, true, '') }}</td>
-            <td>
+            <td style="white-space:nowrap;">
                 <form method="POST" action="/admin/delete-report/{{ r.id }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-del" onclick="return confirm('Dismiss this report?')"><i class="fa-solid fa-trash"></i> Dismiss</button>
                 </form>
-                <a href="/artisan/{{ r.artisan_id }}" style="color:#c49b3a;font-size:12px;margin-left:8px;" target="_blank">View Profile</a>
+                {% if r.artisan_id %}
+                <form method="POST" action="/admin/suspend-artisan/{{ r.artisan_id }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-del" style="background:rgba(255,153,102,0.15);color:#ff9966;border-color:rgba(255,153,102,0.4);" onclick="return confirm('{% if r.artisan_suspended %}Reinstate{% else %}Suspend{% endif %} this artisan? {% if not r.artisan_suspended %}This hides them from the site and blocks new bookings.{% endif %}')">
+                        <i class="fa-solid fa-ban"></i> {% if r.artisan_suspended %}Reinstate{% else %}Suspend{% endif %}
+                    </button>
+                </form>
+                <form method="POST" action="/admin/delete-artisan/{{ r.artisan_id }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-del" onclick="return confirm('Permanently delete this artisan? This cannot be undone.')"><i class="fa-solid fa-user-slash"></i> Delete Artisan</button>
+                </form>
+                <a href="/artisan/{{ r.artisan_id }}" style="color:#c49b3a;font-size:12px;margin-left:4px;" target="_blank">View Profile</a>
+                {% endif %}
             </td>
         </tr>
         {% endfor %}

@@ -42,6 +42,7 @@
     <a href="/artisans"><i class="fa-solid fa-users"></i> Find Artisan</a>
     {% if session.user_id %}
         <a href="/add-artisan" class="nav-register"><i class="fa-solid fa-plus"></i> Register as Artisan</a>
+        {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     {% else %}
         <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>

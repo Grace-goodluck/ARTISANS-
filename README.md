@@ -115,8 +115,14 @@ artisan-service-app/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SECRET_KEY` | Flask session secret key | `mysecretkey` (change this!) |
+| `SECRET_KEY` | Flask session secret key | required, no default |
 | `FLASK_DEBUG` | Enable debug mode (`true`/`false`) | `false` |
+| `DATABASE_URL` | PostgreSQL connection string (unset = local SQLite) | none |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary image hosting credentials | required, no default |
+| `PAYSTACK_SECRET_KEY` | Paystack secret key — enables online payments for service packages | none (payments disabled if unset) |
+| `PAYSTACK_PUBLIC_KEY` | Paystack public key | none |
+
+To finish Paystack setup, add `https://<your-domain>/paystack/webhook` as the webhook URL in the Paystack dashboard (Settings → API Keys & Webhooks), so payments are confirmed server-side even if a client closes the tab before the redirect back.
 
 ---
 

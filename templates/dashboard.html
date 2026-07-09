@@ -64,6 +64,7 @@
     <a href="/inbox"><i class="fa-solid fa-inbox"></i> Inbox</a>
     <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
     <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+    {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
     <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
 </nav>
 
@@ -86,6 +87,7 @@
             <a href="/artisan/{{ artisan.id }}" class="strip-btn">View Profile</a>
             <a href="/artisan/{{ artisan.id }}/edit" class="strip-btn primary"><i class="fa-solid fa-pen"></i> Edit</a>
             <form method="POST" action="/dashboard/toggle-availability" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="strip-btn" style="cursor:pointer;border:none;">
                     {% if artisan.is_available %}<i class="fa-solid fa-circle" style="color:#66dd66;font-size:10px;"></i> Available{% else %}<i class="fa-solid fa-circle" style="color:#ff7777;font-size:10px;"></i> Busy{% endif %}
                 </button>

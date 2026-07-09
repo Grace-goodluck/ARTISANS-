@@ -34,6 +34,7 @@
     {% endif %}
 
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
             <label>Send To</label>
             <select name="target">

@@ -458,6 +458,7 @@
     {% endif %}
 
     <form method="POST" enctype="multipart/form-data" id="artisan-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <!-- STEP 1: PERSONAL INFO -->
         <div class="step-card active" id="step-1">

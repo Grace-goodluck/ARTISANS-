@@ -44,9 +44,11 @@
         <div class="meta"><i class="fa-solid fa-clock"></i> {{ (f.created_at or '')|string|truncate(16,true,'') }}</div>
         <div class="action-row">
             <form method="POST" action="/admin/flagged-reviews/{{ f.id }}/dismiss" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-sm btn-dismiss"><i class="fa-solid fa-check"></i> Dismiss Flag</button>
             </form>
             <form method="POST" action="/admin/flagged-reviews/{{ f.id }}/delete-review" style="display:inline;" onsubmit="return confirm('Permanently delete this review?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-sm btn-del"><i class="fa-solid fa-trash"></i> Delete Review</button>
             </form>
         </div>

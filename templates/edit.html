@@ -12,6 +12,7 @@
 
 <div class="form-container">
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" name="name" value="{{ user.name }}" required>
         <input type="email" name="email" value="{{ user.email }}" required>
 

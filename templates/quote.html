@@ -63,6 +63,7 @@
     <h1><i class="fa-solid fa-file-invoice"></i> Request a Quote</h1>
     <p class="sub">Fill in your details and {{ artisan.name }} will get in touch with a price estimate.</p>
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
             <label>Your Name <span style="color:#ff6b6b;">*</span></label>
             <input type="text" name="client_name" required placeholder="Your full name">

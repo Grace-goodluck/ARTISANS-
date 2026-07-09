@@ -546,6 +546,7 @@
     <div class="section-card full-width">
         <div class="section-title"><i class="fa-solid fa-pen-to-square"></i> Leave a Review</div>
         <form method="POST" class="review-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label>Rating</label>
             <select name="rating" required>
                 <option value="">Select a rating</option>

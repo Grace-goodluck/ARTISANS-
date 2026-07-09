@@ -58,6 +58,7 @@
         <a href="/request-service"><i class="fa-solid fa-bullhorn"></i> Post a Request</a>
         {% if session.user_id %}
             <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+            {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
             <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         {% else %}
             <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>

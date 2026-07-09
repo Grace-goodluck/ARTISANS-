@@ -2,19 +2,30 @@ import sqlite3
 import os
 import ssl
 import urllib.parse
+import uuid
+import hmac
+import hashlib
 import bcrypt
 import cloudinary
 import cloudinary.uploader
+import requests
+from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, make_response, jsonify
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
 import re as _re
 
 app = Flask(__name__, template_folder='templates')
-app.secret_key = os.environ.get("SECRET_KEY", "mysecretkey")
+app.secret_key = os.environ["SECRET_KEY"]
+
+csrf = CSRFProtect(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 @app.template_filter('wa_number')
 def wa_number_filter(number):
@@ -30,11 +41,16 @@ def wa_number_filter(number):
 
 # ── Cloudinary config ──────────────────────────────────────────────────────────
 cloudinary.config(
-    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", "dcalqyzvn"),
-    api_key=os.environ.get("CLOUDINARY_API_KEY", "633257313267431"),
-    api_secret=os.environ.get("CLOUDINARY_API_SECRET", "li1Nm4wZs9rS7S7I4szeegemFfw"),
+    cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
+    api_key=os.environ["CLOUDINARY_API_KEY"],
+    api_secret=os.environ["CLOUDINARY_API_SECRET"],
     secure=True
 )
+
+# ── Paystack config ────────────────────────────────────────────────────────────
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY")
+PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY")
+PAYSTACK_BASE_URL = "https://api.paystack.co"
 
 # ── Database config ────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get("DATABASE_URL")  # set on Vercel → PostgreSQL
@@ -190,6 +206,102 @@ def send_email(to_email, subject, body):
         pass
 
 
+def paystack_initialize(email, amount_kobo, reference, callback_url, metadata=None):
+    """Create a Paystack transaction. Returns the authorization_url on success, None on failure."""
+    if not PAYSTACK_SECRET_KEY:
+        return None
+    try:
+        resp = requests.post(
+            f"{PAYSTACK_BASE_URL}/transaction/initialize",
+            headers={"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"},
+            json={
+                "email": email,
+                "amount": amount_kobo,
+                "currency": "NGN",
+                "reference": reference,
+                "callback_url": callback_url,
+                "metadata": metadata or {},
+            },
+            timeout=15,
+        )
+        data = resp.json()
+        if resp.ok and data.get("status"):
+            return data["data"]["authorization_url"]
+    except Exception:
+        app.logger.exception("Paystack initialize failed")
+    return None
+
+
+def paystack_verify(reference):
+    """Verify a Paystack transaction by reference. Returns the 'data' dict on success, None otherwise."""
+    if not PAYSTACK_SECRET_KEY:
+        return None
+    try:
+        resp = requests.get(
+            f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}",
+            headers={"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"},
+            timeout=15,
+        )
+        data = resp.json()
+        if resp.ok and data.get("status"):
+            return data["data"]
+    except Exception:
+        app.logger.exception("Paystack verify failed")
+    return None
+
+
+def finalize_payment(reference):
+    """Verify a payment with Paystack and, if successful, mark it paid and create the booking.
+    Idempotent — safe to call from both the browser callback and the webhook."""
+    conn = get_db_connection()
+    payment = db_execute(conn, "SELECT * FROM payments WHERE reference=?", (reference,)).fetchone()
+    if not payment:
+        conn.close()
+        return None
+    payment = dict(payment)
+
+    if payment["status"] == "success":
+        conn.close()
+        return payment
+
+    verified = paystack_verify(reference)
+    if not verified or verified.get("status") != "success" or int(verified.get("amount") or 0) != payment["amount_kobo"]:
+        db_execute(conn, "UPDATE payments SET status=? WHERE reference=?", ("failed", reference))
+        conn.commit()
+        conn.close()
+        return None
+
+    artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (payment["artisan_id"],)).fetchone()
+    package = db_execute(conn, "SELECT * FROM packages WHERE id=?", (payment["package_id"],)).fetchone()
+    artisan = dict(artisan) if artisan else None
+    package = dict(package) if package else None
+
+    booking_id = db_insert(conn,
+        "INSERT INTO bookings (artisan_id, client_name, client_phone, client_email, note, status, amount_kobo, payment_reference) "
+        "VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?)",
+        (payment["artisan_id"], payment["client_name"], payment["client_phone"], payment["client_email"],
+         f"Paid booking — {package['title'] if package else 'Service'} package", payment["amount_kobo"], reference))
+
+    db_execute(conn, "UPDATE payments SET status='success', booking_id=?, verified_at=CURRENT_TIMESTAMP WHERE reference=?",
+               (booking_id, reference))
+    conn.commit()
+    conn.close()
+
+    if artisan and artisan.get('email'):
+        send_email(
+            artisan['email'],
+            "New paid booking on Artisaan's Crib",
+            f"Hello {artisan['name']},\n\n{payment['client_name']} just paid ₦{payment['amount_kobo']//100:,} "
+            f"for your {package['title'] if package else 'service'} package and their booking is confirmed.\n\n"
+            f"Phone: {payment['client_phone']}\nEmail: {payment['client_email']}\n\n"
+            f"Log in to view it: https://artisans-crib.vercel.app/my-bookings"
+        )
+
+    payment["status"] = "success"
+    payment["booking_id"] = booking_id
+    return payment
+
+
 def profile_completion(artisan):
     fields = ['name','email','skill','location','phone','description',
               'image','experience','certifications','availability',
@@ -207,12 +319,62 @@ def is_admin():
     return bool(user and user['email'] == ADMIN_EMAIL)
 
 
+@app.context_processor
+def inject_is_platform_admin():
+    return {'is_platform_admin': is_admin()}
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not is_admin():
+            return redirect(url_for('home'))
+        return view(*args, **kwargs)
+    return wrapped
+
+
 # ── No-cache header ────────────────────────────────────────────────────────────
 @app.after_request
 def no_cache(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    return response
+
+
+# ── Security headers ───────────────────────────────────────────────────────────
+CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net unpkg.com; "
+    "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com unpkg.com; "
+    "font-src 'self' cdnjs.cloudflare.com; "
+    "img-src 'self' data: res.cloudinary.com; "
+    "frame-src www.youtube.com; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+
+@app.after_request
+def security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(self), camera=(), microphone=(), payment=()"
+    response.headers["Content-Security-Policy"] = CSP
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -484,6 +646,24 @@ def create_table():
         )
     ''')
 
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS payments (
+            id {PK},
+            reference TEXT UNIQUE,
+            artisan_id INTEGER,
+            package_id INTEGER,
+            user_id INTEGER,
+            client_name TEXT,
+            client_email TEXT,
+            client_phone TEXT,
+            amount_kobo INTEGER,
+            status TEXT DEFAULT 'pending',
+            booking_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            verified_at TIMESTAMP
+        )
+    ''')
+
     conn.commit()  # commit all new table creations before alter loops that may rollback
 
     for col, definition in [
@@ -542,12 +722,46 @@ def create_table():
             try: conn.rollback()
             except: pass
 
+    for col, definition in [
+        ("amount_kobo", "INTEGER"),
+        ("payment_reference", "TEXT"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE bookings ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
+    for col, definition in [
+        ("is_suspended", "INTEGER DEFAULT 0"),
+        ("suspended_reason", "TEXT"),
+        ("suspended_at", "TIMESTAMP"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE users ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
+    for col, definition in [
+        ("is_suspended", "INTEGER DEFAULT 0"),
+    ]:
+        try:
+            db_execute(conn, f"ALTER TABLE artisans ADD COLUMN {col} {definition}")
+            conn.commit()
+        except Exception:
+            try: conn.rollback()
+            except: pass
+
     conn.commit()
     conn.close()
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 @app.route("/debug-info")
+@admin_required
 def debug_info():
     info = {"DATABASE_URL_set": bool(DATABASE_URL)}
     try:
@@ -582,14 +796,14 @@ def home():
     testimonials = db_execute(conn, """
         SELECT r.rating, r.comment, a.name as artisan_name, a.skill as artisan_skill, a.image as artisan_image
         FROM reviews r JOIN artisans a ON a.id = r.artisan_id
-        WHERE r.rating >= 4 AND r.comment IS NOT NULL AND r.comment != ''
+        WHERE r.rating >= 4 AND r.comment IS NOT NULL AND r.comment != '' AND COALESCE(a.is_suspended, 0) = 0
         ORDER BY r.rating DESC, r.id DESC LIMIT 3
     """).fetchall()
     featured_artisan = db_execute(conn, """
         SELECT a.*,
             COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
-        FROM artisans a WHERE a.is_featured_week=1 LIMIT 1
+        FROM artisans a WHERE a.is_featured_week=1 AND COALESCE(a.is_suspended, 0) = 0 LIMIT 1
     """).fetchone()
     trending_skills = db_execute(conn, """
         SELECT skill, COUNT(*) as c FROM artisans
@@ -604,7 +818,7 @@ def home():
             COALESCE((SELECT COUNT(*) FROM reviews r2 WHERE r2.artisan_id=a.id), 0) as review_count
         FROM artisans a
         JOIN reviews r ON r.artisan_id = a.id
-        WHERE r.created_at >= {interval_sql} AND a.name IS NOT NULL AND a.name != ''
+        WHERE r.created_at >= {interval_sql} AND a.name IS NOT NULL AND a.name != '' AND COALESCE(a.is_suspended, 0) = 0
         GROUP BY a.id
         ORDER BY month_reviews DESC, avg_rating DESC
         LIMIT 1
@@ -635,7 +849,7 @@ def artisans():
         FROM artisans a
     """
     op = "ILIKE" if DATABASE_URL else "LIKE"
-    conditions = ["a.name IS NOT NULL", "a.name != ''"]
+    conditions = ["a.name IS NOT NULL", "a.name != ''", "COALESCE(a.is_suspended, 0) = 0"]
     params = []
 
     if search:
@@ -700,9 +914,8 @@ def artisans():
 
 
 @app.route("/add-artisan", methods=["GET", "POST"])
+@login_required
 def add_artisan():
-    if "user_id" not in session:
-        return redirect(url_for('login'))
 
     if request.method == "POST":
         name = request.form["name"]
@@ -768,35 +981,55 @@ def add_artisan():
 
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("10 per hour", methods=["POST"])
 def register():
     if request.method == "POST":
-        fullname = request.form["fullname"]
-        email    = request.form["email"]
-        hashed   = bcrypt.hashpw(request.form["password"].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        fullname = request.form.get("fullname", "").strip()
+        email    = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-        conn = get_db_connection()
+        if not fullname or not email or not password:
+            return render_template("register.html", error="Please fill in all fields.")
+        if len(password.encode('utf-8')) > 72:
+            return render_template("register.html", error="Password must be 72 characters or fewer.")
+
+        try:
+            hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            conn = get_db_connection()
+        except Exception:
+            app.logger.exception("Failed to prepare registration")
+            return render_template("register.html", error="Something went wrong. Please try again.")
+
         try:
             db_execute(conn, "INSERT INTO users (name, email, password) VALUES (?, ?, ?)", (fullname, email, hashed))
             conn.commit()
+            user = db_execute(conn, "SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         except Exception:
             conn.rollback()
             conn.close()
             return render_template("register.html", error="An account with that email already exists.")
         conn.close()
+        if user:
+            session["user_id"] = user["id"]
         return redirect(url_for('home'))
 
     return render_template("register.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     if request.method == "POST":
-        email    = request.form["email"]
-        password = request.form["password"]
+        email    = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-        conn = get_db_connection()
-        user = db_execute(conn, "SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-        conn.close()
+        try:
+            conn = get_db_connection()
+            user = db_execute(conn, "SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+            conn.close()
+        except Exception:
+            app.logger.exception("Failed to look up user during login")
+            return render_template("login.html", error="Something went wrong. Please try again.")
 
         if user:
             stored = user["password"]
@@ -809,6 +1042,8 @@ def login():
             except Exception:
                 match = False
             if match:
+                if user["is_suspended"]:
+                    return render_template("login.html", error="This account has been suspended. Contact support if you think this is a mistake.")
                 session["user_id"] = user["id"]
                 return redirect(url_for('home'))
             return render_template("login.html", error="Incorrect password")
@@ -818,9 +1053,8 @@ def login():
 
 
 @app.route("/users")
+@admin_required
 def show_users():
-    if "user_id" not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     users = db_execute(conn, "SELECT * FROM users").fetchall()
     conn.close()
@@ -828,17 +1062,17 @@ def show_users():
 
 
 @app.route("/delete/<int:id>", methods=["POST"])
+@admin_required
 def delete_user(id):
-    if "user_id" not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
-    db_execute(conn, "DELETE FROM users WHERE id = ?", (id,))
+    _cascade_delete_user(conn, id)
     conn.commit()
     conn.close()
     return redirect(url_for('show_users'))
 
 
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
+@admin_required
 def edit_user(id):
     conn = get_db_connection()
     user = db_execute(conn, "SELECT * FROM users WHERE id = ?", (id,)).fetchone()
@@ -890,6 +1124,9 @@ def artisan_profile(id):
         conn.close()
         return render_template('404.html'), 404
     artisan = dict(artisan_row)
+    if artisan.get('is_suspended') and session.get('user_id') != artisan.get('user_id') and not is_admin():
+        conn.close()
+        return render_template('404.html'), 404
 
     # increment view count (skip if viewer is the artisan owner)
     if session.get('user_id') != artisan.get('user_id'):
@@ -956,9 +1193,8 @@ def suggestions():
 
 
 @app.route('/artisan/<int:id>/toggle-availability', methods=['POST'])
+@login_required
 def toggle_availability(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     a = db_execute(conn, "SELECT is_available, user_id FROM artisans WHERE id=?", (id,)).fetchone()
     if a and a['user_id'] == session['user_id']:
@@ -979,9 +1215,8 @@ def terms():
 
 
 @app.route('/notifications')
+@login_required
 def notifications():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     my_artisan = db_execute(conn, "SELECT id, name FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
     if not my_artisan:
@@ -994,9 +1229,8 @@ def notifications():
 
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     my_artisan = db_execute(conn, "SELECT * FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
     if not my_artisan:
@@ -1081,9 +1315,8 @@ def dashboard():
 
 
 @app.route('/artisan/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_artisan(id):
-    if "user_id" not in session:
-        return redirect(url_for('login'))
 
     conn = get_db_connection()
     artisan_row = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
@@ -1138,9 +1371,8 @@ def edit_artisan(id):
 
 
 @app.route('/artisan/<int:id>/delete-photo/<int:photo_id>', methods=['POST'])
+@login_required
 def delete_portfolio_photo(id, photo_id):
-    if "user_id" not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     photo = db_execute(conn, "SELECT image FROM portfolios WHERE id=? AND artisan_id=?", (photo_id, id)).fetchone()
     if photo:
@@ -1150,29 +1382,15 @@ def delete_portfolio_photo(id, photo_id):
     return redirect(url_for('edit_artisan', id=id))
 
 
-@app.route('/forgot-password', methods=['GET', 'POST'])
+@app.route('/forgot-password', methods=['GET'])
 def forgot_password():
-    message = ""
-    if request.method == 'POST':
-        email        = request.form.get('email')
-        new_password = request.form.get('new_password')
-        conn = get_db_connection()
-        user = db_execute(conn, "SELECT * FROM users WHERE email=?", (email,)).fetchone()
-        if user:
-            hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            db_execute(conn, "UPDATE users SET password=? WHERE email=?", (hashed, email))
-            conn.commit()
-            message = "Password updated successfully!"
-        else:
-            message = "Email not found!"
-        conn.close()
-    return render_template('forgot_password.html', message=message)
+    return render_template('forgot_password.html')
 
 
 @app.route('/account', methods=['GET', 'POST'])
+@login_required
+@limiter.limit("20 per hour", methods=["POST"])
 def account():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     user = db_execute(conn, "SELECT * FROM users WHERE id=?", (session['user_id'],)).fetchone()
     my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
@@ -1255,9 +1473,8 @@ def account():
 
 
 @app.route('/artisan/<int:id>/bookmark', methods=['POST'])
+@login_required
 def toggle_bookmark(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     existing = db_execute(conn, "SELECT id FROM bookmarks WHERE user_id=? AND artisan_id=?", (session['user_id'], id)).fetchone()
     if existing:
@@ -1270,9 +1487,8 @@ def toggle_bookmark(id):
 
 
 @app.route('/saved')
+@login_required
 def saved_artisans():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     rows = db_execute(conn, """
         SELECT a.* FROM artisans a
@@ -1307,25 +1523,86 @@ def send_message(id):
 
 
 @app.route('/admin')
+@admin_required
 def admin_panel():
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
-    artisans = db_execute(conn, "SELECT * FROM artisans ORDER BY is_promoted DESC, id DESC").fetchall()
+    artisans = db_execute(conn, """
+        SELECT a.*,
+            COALESCE((SELECT COUNT(*) FROM reports rp WHERE rp.artisan_id=a.id), 0) as report_count
+        FROM artisans a ORDER BY a.is_promoted DESC, a.id DESC
+    """).fetchall()
     users = db_execute(conn, "SELECT * FROM users ORDER BY id DESC").fetchall()
     msgs = db_execute(conn, """
         SELECT m.*, a.name as artisan_name FROM messages m
         LEFT JOIN artisans a ON a.id = m.artisan_id
         ORDER BY m.created_at DESC
     """).fetchall()
+
+    # ── Platform metrics ──────────────────────────────────────────────
+    total_users     = db_execute(conn, "SELECT COUNT(*) as c FROM users").fetchone()['c']
+    total_artisans  = db_execute(conn, "SELECT COUNT(*) as c FROM artisans WHERE name IS NOT NULL AND name != ''").fetchone()['c']
+    verified_count  = db_execute(conn, "SELECT COUNT(*) as c FROM artisans WHERE verified=1").fetchone()['c']
+    suspended_users = db_execute(conn, "SELECT COUNT(*) as c FROM users WHERE is_suspended=1").fetchone()['c']
+    total_bookings     = db_execute(conn, "SELECT COUNT(*) as c FROM bookings").fetchone()['c']
+    completed_bookings = db_execute(conn, "SELECT COUNT(*) as c FROM bookings WHERE status='completed'").fetchone()['c']
+    revenue_row = db_execute(conn, "SELECT COALESCE(SUM(amount_kobo),0) as total, COUNT(*) as cnt FROM payments WHERE status='success'").fetchone()
+    total_revenue_naira = int(revenue_row['total'] or 0) / 100
+    total_transactions  = revenue_row['cnt']
+    pending_verifications = db_execute(conn, "SELECT COUNT(*) as c FROM verification_requests WHERE status='pending'").fetchone()['c']
+    open_reports    = db_execute(conn, "SELECT COUNT(*) as c FROM reports").fetchone()['c']
+    flagged_count   = db_execute(conn, "SELECT COUNT(*) as c FROM flagged_reviews").fetchone()['c']
+
+    # ── Monthly trends (last 6 months) ────────────────────────────────
+    if DATABASE_URL:
+        month_fn = "TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YYYY')"
+        month_key = "TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM')"
+    else:
+        month_fn = "strftime('%b %Y', created_at)"
+        month_key = "strftime('%Y-%m', created_at)"
+
+    signups_monthly = db_execute(conn, f"""
+        SELECT {month_fn} as month, {month_key} as mkey, COUNT(*) as cnt
+        FROM users GROUP BY mkey, month ORDER BY mkey DESC LIMIT 6
+    """).fetchall()
+    revenue_monthly = db_execute(conn, f"""
+        SELECT {month_fn} as month, {month_key} as mkey, COALESCE(SUM(amount_kobo),0) as total
+        FROM payments WHERE status='success' GROUP BY mkey, month ORDER BY mkey DESC LIMIT 6
+    """).fetchall()
+    bookings_monthly = db_execute(conn, f"""
+        SELECT {month_fn} as month, {month_key} as mkey, COUNT(*) as cnt
+        FROM bookings GROUP BY mkey, month ORDER BY mkey DESC LIMIT 6
+    """).fetchall()
+
+    import json as _json
+    signup_labels  = [r['month'] for r in reversed(signups_monthly)]
+    signup_data    = [r['cnt']   for r in reversed(signups_monthly)]
+    revenue_labels = [r['month'] for r in reversed(revenue_monthly)]
+    revenue_data   = [round(int(r['total'] or 0) / 100, 2) for r in reversed(revenue_monthly)]
+    bookings_labels = [r['month'] for r in reversed(bookings_monthly)]
+    bookings_data    = [r['cnt']   for r in reversed(bookings_monthly)]
+
+    recent_signups = db_execute(conn, "SELECT id, name, email, created_at, is_suspended FROM users ORDER BY id DESC LIMIT 8").fetchall()
+    recent_payments = db_execute(conn, """
+        SELECT p.*, a.name as artisan_name FROM payments p
+        LEFT JOIN artisans a ON a.id=p.artisan_id
+        WHERE p.status='success' ORDER BY p.verified_at DESC LIMIT 8
+    """).fetchall()
+
     conn.close()
-    return render_template('admin.html', artisans=artisans, users=users, msgs=msgs)
+    return render_template('admin.html', artisans=artisans, users=users, msgs=msgs,
+        total_users=total_users, total_artisans=total_artisans, verified_count=verified_count,
+        suspended_users=suspended_users, total_bookings=total_bookings, completed_bookings=completed_bookings,
+        total_revenue_naira=total_revenue_naira, total_transactions=total_transactions,
+        pending_verifications=pending_verifications, open_reports=open_reports, flagged_count=flagged_count,
+        recent_signups=recent_signups, recent_payments=recent_payments,
+        signup_labels=_json.dumps(signup_labels), signup_data=_json.dumps(signup_data),
+        revenue_labels=_json.dumps(revenue_labels), revenue_data=_json.dumps(revenue_data),
+        bookings_labels=_json.dumps(bookings_labels), bookings_data=_json.dumps(bookings_data))
 
 
 @app.route('/admin/verify/<int:id>', methods=['POST'])
+@admin_required
 def verify_artisan(id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     a = db_execute(conn, "SELECT verified FROM artisans WHERE id=?", (id,)).fetchone()
     db_execute(conn, "UPDATE artisans SET verified=? WHERE id=?", (0 if a and a['verified'] else 1, id))
@@ -1334,33 +1611,84 @@ def verify_artisan(id):
     return redirect(url_for('admin_panel'))
 
 
-@app.route('/admin/delete-artisan/<int:id>', methods=['POST'])
-def admin_delete_artisan(id):
-    if not is_admin():
-        return redirect(url_for('home'))
-    conn = get_db_connection()
+def _cascade_delete_artisan(conn, artisan_id):
+    """Delete an artisan and everything that references it."""
+    db_execute(conn, "DELETE FROM flagged_reviews WHERE review_id IN (SELECT id FROM reviews WHERE artisan_id=?)", (artisan_id,))
+    db_execute(conn, "DELETE FROM chat_messages WHERE conversation_id IN (SELECT id FROM conversations WHERE artisan_id=?)", (artisan_id,))
     for sql in [
         "DELETE FROM reviews WHERE artisan_id=?",
         "DELETE FROM portfolios WHERE artisan_id=?",
         "DELETE FROM bookmarks WHERE artisan_id=?",
         "DELETE FROM messages WHERE artisan_id=?",
+        "DELETE FROM packages WHERE artisan_id=?",
+        "DELETE FROM faqs WHERE artisan_id=?",
+        "DELETE FROM reports WHERE artisan_id=?",
+        "DELETE FROM verification_requests WHERE artisan_id=?",
+        "DELETE FROM quote_requests WHERE artisan_id=?",
+        "DELETE FROM job_interests WHERE artisan_id=?",
+        "DELETE FROM availability_slots WHERE artisan_id=?",
+        "DELETE FROM conversations WHERE artisan_id=?",
         "DELETE FROM artisans WHERE id=?",
     ]:
-        db_execute(conn, sql, (id,))
+        db_execute(conn, sql, (artisan_id,))
+
+
+def _cascade_delete_user(conn, user_id):
+    """Delete a user account, cascading into their artisan profile (if any)."""
+    artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (user_id,)).fetchone()
+    if artisan:
+        _cascade_delete_artisan(conn, artisan['id'])
+    db_execute(conn, "DELETE FROM users WHERE id=?", (user_id,))
+
+
+@app.route('/admin/delete-artisan/<int:id>', methods=['POST'])
+@admin_required
+def admin_delete_artisan(id):
+    conn = get_db_connection()
+    _cascade_delete_artisan(conn, id)
     conn.commit()
     conn.close()
-    return redirect(url_for('admin_panel'))
+    return redirect(request.referrer or url_for('admin_panel'))
 
 
 @app.route('/admin/delete-user/<int:id>', methods=['POST'])
+@admin_required
 def admin_delete_user(id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
-    db_execute(conn, "DELETE FROM users WHERE id=?", (id,))
+    _cascade_delete_user(conn, id)
     conn.commit()
     conn.close()
     return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/suspend-user/<int:id>', methods=['POST'])
+@admin_required
+def admin_suspend_user(id):
+    reason = request.form.get('reason', '').strip()
+    conn = get_db_connection()
+    user = db_execute(conn, "SELECT is_suspended FROM users WHERE id=?", (id,)).fetchone()
+    if user:
+        new_state = 0 if user['is_suspended'] else 1
+        db_execute(conn, "UPDATE users SET is_suspended=?, suspended_reason=?, suspended_at=CURRENT_TIMESTAMP WHERE id=?",
+                   (new_state, reason if new_state else None, id))
+        artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (id,)).fetchone()
+        if artisan:
+            db_execute(conn, "UPDATE artisans SET is_suspended=? WHERE id=?", (new_state, artisan['id']))
+        conn.commit()
+    conn.close()
+    return redirect(request.referrer or url_for('admin_panel'))
+
+
+@app.route('/admin/suspend-artisan/<int:id>', methods=['POST'])
+@admin_required
+def admin_suspend_artisan(id):
+    conn = get_db_connection()
+    a = db_execute(conn, "SELECT is_suspended FROM artisans WHERE id=?", (id,)).fetchone()
+    if a:
+        db_execute(conn, "UPDATE artisans SET is_suspended=? WHERE id=?", (0 if a['is_suspended'] else 1, id))
+        conn.commit()
+    conn.close()
+    return redirect(request.referrer or url_for('admin_panel'))
 
 
 @app.route('/artisan/<int:id>/report', methods=['POST'])
@@ -1403,9 +1731,8 @@ def service_requests_list():
 
 
 @app.route('/review/<int:review_id>/reply', methods=['POST'])
+@login_required
 def reply_review(review_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     reply = request.form.get('reply', '').strip()
     if reply:
         conn = get_db_connection()
@@ -1440,12 +1767,11 @@ def artisans_by_ids():
 
 
 @app.route('/admin/reports')
+@admin_required
 def admin_reports():
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     reports = db_execute(conn, """
-        SELECT rp.*, a.name as artisan_name, a.skill as artisan_skill
+        SELECT rp.*, a.name as artisan_name, a.skill as artisan_skill, a.is_suspended as artisan_suspended
         FROM reports rp LEFT JOIN artisans a ON a.id=rp.artisan_id
         ORDER BY rp.created_at DESC
     """).fetchall()
@@ -1454,9 +1780,8 @@ def admin_reports():
 
 
 @app.route('/admin/delete-report/<int:report_id>', methods=['POST'])
+@admin_required
 def delete_report(report_id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     db_execute(conn, "DELETE FROM reports WHERE id=?", (report_id,))
     conn.commit()
@@ -1466,9 +1791,8 @@ def delete_report(report_id):
 
 # ── Packages ──────────────────────────────────────────────────────────────────
 @app.route('/artisan/<int:id>/packages/add', methods=['POST'])
+@login_required
 def add_package(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     a = db_execute(conn, "SELECT user_id FROM artisans WHERE id=?", (id,)).fetchone()
     if a and a['user_id'] == session['user_id']:
@@ -1482,9 +1806,8 @@ def add_package(id):
 
 
 @app.route('/artisan/<int:id>/packages/<int:pkg_id>/delete', methods=['POST'])
+@login_required
 def delete_package(id, pkg_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     db_execute(conn, "DELETE FROM packages WHERE id=? AND artisan_id=?", (pkg_id, id))
     conn.commit()
@@ -1494,9 +1817,8 @@ def delete_package(id, pkg_id):
 
 # ── FAQs ──────────────────────────────────────────────────────────────────────
 @app.route('/artisan/<int:id>/faq/add', methods=['POST'])
+@login_required
 def add_faq(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     a = db_execute(conn, "SELECT user_id FROM artisans WHERE id=?", (id,)).fetchone()
     if a and a['user_id'] == session['user_id']:
@@ -1508,9 +1830,8 @@ def add_faq(id):
 
 
 @app.route('/artisan/<int:id>/faq/<int:faq_id>/delete', methods=['POST'])
+@login_required
 def delete_faq(id, faq_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     db_execute(conn, "DELETE FROM faqs WHERE id=? AND artisan_id=?", (faq_id, id))
     conn.commit()
@@ -1592,9 +1913,8 @@ def job_interest(job_id):
 
 # ── Admin: newsletter ──────────────────────────────────────────────────────────
 @app.route('/admin/newsletter', methods=['GET', 'POST'])
+@admin_required
 def admin_newsletter():
-    if not is_admin():
-        return redirect(url_for('home'))
     msg = ''
     if request.method == 'POST':
         subject = request.form.get('subject', '')
@@ -1624,9 +1944,8 @@ def admin_newsletter():
 
 # ── Admin: flagged reviews ─────────────────────────────────────────────────────
 @app.route('/admin/flagged-reviews')
+@admin_required
 def admin_flagged_reviews():
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     flags = db_execute(conn, """
         SELECT f.*, r.comment, r.rating, r.artisan_id,
@@ -1641,9 +1960,8 @@ def admin_flagged_reviews():
 
 
 @app.route('/admin/flagged-reviews/<int:flag_id>/dismiss', methods=['POST'])
+@admin_required
 def dismiss_flag(flag_id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     db_execute(conn, "DELETE FROM flagged_reviews WHERE id=?", (flag_id,))
     conn.commit()
@@ -1652,9 +1970,8 @@ def dismiss_flag(flag_id):
 
 
 @app.route('/admin/flagged-reviews/<int:flag_id>/delete-review', methods=['POST'])
+@admin_required
 def delete_flagged_review(flag_id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     flag = db_execute(conn, "SELECT review_id FROM flagged_reviews WHERE id=?", (flag_id,)).fetchone()
     if flag:
@@ -1667,9 +1984,8 @@ def delete_flagged_review(flag_id):
 
 # ── Admin: featured week + promote ────────────────────────────────────────────
 @app.route('/admin/featured/<int:id>', methods=['POST'])
+@admin_required
 def set_featured_week(id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     db_execute(conn, "UPDATE artisans SET is_featured_week=0")
     db_execute(conn, "UPDATE artisans SET is_featured_week=1 WHERE id=?", (id,))
@@ -1679,9 +1995,8 @@ def set_featured_week(id):
 
 
 @app.route('/admin/promote/<int:id>', methods=['POST'])
+@admin_required
 def toggle_promote(id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     a = db_execute(conn, "SELECT is_promoted FROM artisans WHERE id=?", (id,)).fetchone()
     db_execute(conn, "UPDATE artisans SET is_promoted=? WHERE id=?", (0 if a and a['is_promoted'] else 1, id))
@@ -1704,11 +2019,94 @@ def unread_count():
     return jsonify({'count': count})
 
 
+@app.route('/artisan/<int:id>/pay/<int:pkg_id>', methods=['GET', 'POST'])
+def pay_package(id, pkg_id):
+    conn = get_db_connection()
+    artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
+    package = db_execute(conn, "SELECT * FROM packages WHERE id=? AND artisan_id=?", (pkg_id, id)).fetchone()
+    if artisan is None or package is None or artisan['is_suspended']:
+        conn.close()
+        return render_template('404.html'), 404
+    artisan = dict(artisan)
+    package = dict(package)
+    conn.close()
+
+    try:
+        amount_naira = float(str(package.get('price') or '0').replace(',', '').strip())
+    except ValueError:
+        amount_naira = 0
+
+    if request.method == 'POST':
+        if not PAYSTACK_SECRET_KEY:
+            return render_template('pay.html', artisan=artisan, package=package,
+                                    error="Online payments aren't set up yet. Please contact the artisan directly.")
+        if amount_naira <= 0:
+            return render_template('pay.html', artisan=artisan, package=package,
+                                    error="This package doesn't have a valid price yet.")
+
+        client_name  = request.form.get('client_name', '').strip()
+        client_phone = request.form.get('client_phone', '').strip()
+        client_email = request.form.get('client_email', '').strip()
+        if not client_name or not client_phone or not client_email:
+            return render_template('pay.html', artisan=artisan, package=package,
+                                    error="Please fill in all fields.")
+
+        amount_kobo = int(round(amount_naira * 100))
+        reference = f"AC-{uuid.uuid4().hex[:20]}"
+        conn = get_db_connection()
+        db_execute(conn,
+            "INSERT INTO payments (reference, artisan_id, package_id, user_id, client_name, client_email, client_phone, amount_kobo) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (reference, id, pkg_id, session.get('user_id'), client_name, client_email, client_phone, amount_kobo))
+        conn.commit()
+        conn.close()
+
+        auth_url = paystack_initialize(
+            email=client_email,
+            amount_kobo=amount_kobo,
+            reference=reference,
+            callback_url=url_for('payment_callback', _external=True),
+            metadata={"artisan_id": id, "package_id": pkg_id},
+        )
+        if not auth_url:
+            return render_template('pay.html', artisan=artisan, package=package,
+                                    error="Couldn't start the payment. Please try again shortly.")
+        return redirect(auth_url)
+
+    return render_template('pay.html', artisan=artisan, package=package, amount_naira=amount_naira)
+
+
+@app.route('/payment/callback')
+def payment_callback():
+    reference = request.args.get('reference', '')
+    payment = finalize_payment(reference) if reference else None
+    if payment and payment.get('status') == 'success':
+        return render_template('payment_result.html', success=True, payment=payment)
+    return render_template('payment_result.html', success=False, payment=payment)
+
+
+@app.route('/paystack/webhook', methods=['POST'])
+@csrf.exempt
+def paystack_webhook():
+    if not PAYSTACK_SECRET_KEY:
+        return '', 400
+    signature = request.headers.get('X-Paystack-Signature', '')
+    expected = hmac.new(PAYSTACK_SECRET_KEY.encode('utf-8'), request.get_data(), hashlib.sha512).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        return '', 401
+    event = request.get_json(silent=True) or {}
+    if event.get('event') == 'charge.success':
+        reference = (event.get('data') or {}).get('reference', '')
+        if reference:
+            finalize_payment(reference)
+    return '', 200
+
+
 @app.route('/book/<int:id>', methods=['GET', 'POST'])
 def book_artisan(id):
     conn = get_db_connection()
     artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
-    if artisan is None:
+    if artisan is None or artisan['is_suspended']:
         conn.close()
         return render_template('404.html'), 404
     if request.method == 'POST':
@@ -1737,9 +2135,8 @@ def book_artisan(id):
 
 
 @app.route('/my-bookings')
+@login_required
 def my_bookings():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     my_artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
     bookings = []
@@ -1754,9 +2151,8 @@ def my_bookings():
 
 
 @app.route('/booking/<int:booking_id>/status', methods=['POST'])
+@login_required
 def update_booking_status(booking_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     status = request.form.get('status', '')
     if status not in ('pending', 'confirmed', 'declined', 'completed'):
         return redirect(url_for('my_bookings'))
@@ -1807,16 +2203,15 @@ def map_view():
         SELECT id, name, skill, location, image, is_available,
             COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
-        FROM artisans a WHERE name IS NOT NULL AND name != '' AND location IS NOT NULL AND location != ''
+        FROM artisans a WHERE name IS NOT NULL AND name != '' AND location IS NOT NULL AND location != '' AND COALESCE(is_suspended, 0) = 0
     """).fetchall()
     conn.close()
     return render_template('map.html', artisans=rows)
 
 
 @app.route('/dashboard/toggle-availability', methods=['POST'])
+@login_required
 def dashboard_toggle_availability():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     a = db_execute(conn, "SELECT id, is_available FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
     if a:
@@ -1835,7 +2230,7 @@ def category_page(skill):
             COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
         FROM artisans a
-        WHERE a.skill {op} ? AND a.name IS NOT NULL AND a.name != ''
+        WHERE a.skill {op} ? AND a.name IS NOT NULL AND a.name != '' AND COALESCE(a.is_suspended, 0) = 0
         ORDER BY a.is_promoted DESC, avg_rating DESC, a.view_count DESC
     """, ('%' + skill + '%',)).fetchall()
     conn.close()
@@ -1849,21 +2244,21 @@ def leaderboard():
         SELECT a.*,
             COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
-        FROM artisans a WHERE a.name IS NOT NULL AND a.name != ''
+        FROM artisans a WHERE a.name IS NOT NULL AND a.name != '' AND COALESCE(a.is_suspended, 0) = 0
         ORDER BY a.view_count DESC LIMIT 10
     """).fetchall()
     top_rated = db_execute(conn, """
         SELECT a.*,
             COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
-        FROM artisans a WHERE a.name IS NOT NULL AND a.name != ''
+        FROM artisans a WHERE a.name IS NOT NULL AND a.name != '' AND COALESCE(a.is_suspended, 0) = 0
         HAVING review_count >= 1
         ORDER BY avg_rating DESC, review_count DESC LIMIT 10
     """).fetchall() if not DATABASE_URL else db_execute(conn, """
         SELECT a.*,
             COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.artisan_id=a.id), 0) as avg_rating,
             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.artisan_id=a.id), 0) as review_count
-        FROM artisans a WHERE a.name IS NOT NULL AND a.name != ''
+        FROM artisans a WHERE a.name IS NOT NULL AND a.name != '' AND COALESCE(a.is_suspended, 0) = 0
         ORDER BY avg_rating DESC, review_count DESC LIMIT 10
     """).fetchall()
     conn.close()
@@ -1888,9 +2283,8 @@ def profile_widget(id):
 
 
 @app.route('/artisan/<int:id>/calendar', methods=['GET', 'POST'])
+@login_required
 def artisan_calendar(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     artisan = db_execute(conn, "SELECT id, user_id, name FROM artisans WHERE id=?", (id,)).fetchone()
     if not artisan or artisan['user_id'] != session['user_id']:
@@ -1918,9 +2312,8 @@ def artisan_calendar(id):
 
 
 @app.route('/artisan/<int:id>/verify-request', methods=['POST'])
+@login_required
 def verification_request(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     artisan = db_execute(conn, "SELECT id, user_id FROM artisans WHERE id=?", (id,)).fetchone()
     if artisan and artisan['user_id'] == session['user_id']:
@@ -1934,9 +2327,8 @@ def verification_request(id):
 
 
 @app.route('/admin/verification-requests')
+@admin_required
 def admin_verification_requests():
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     reqs = db_execute(conn, """
         SELECT vr.*, a.name as artisan_name, a.skill as artisan_skill, a.id as artisan_id
@@ -1948,9 +2340,8 @@ def admin_verification_requests():
 
 
 @app.route('/admin/verification-requests/<int:req_id>/approve', methods=['POST'])
+@admin_required
 def approve_verification(req_id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     vr = db_execute(conn, "SELECT artisan_id FROM verification_requests WHERE id=?", (req_id,)).fetchone()
     if vr:
@@ -1962,9 +2353,8 @@ def approve_verification(req_id):
 
 
 @app.route('/admin/verification-requests/<int:req_id>/reject', methods=['POST'])
+@admin_required
 def reject_verification(req_id):
-    if not is_admin():
-        return redirect(url_for('home'))
     conn = get_db_connection()
     db_execute(conn, "UPDATE verification_requests SET status='rejected' WHERE id=?", (req_id,))
     conn.commit()
@@ -2050,9 +2440,8 @@ def chat(artisan_id):
 
 
 @app.route('/inbox')
+@login_required
 def inbox():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
     if not artisan:
@@ -2070,9 +2459,8 @@ def inbox():
 
 
 @app.route('/inbox/<int:conv_id>', methods=['GET', 'POST'])
+@login_required
 def inbox_thread(conv_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
     conn = get_db_connection()
     artisan = db_execute(conn, "SELECT id FROM artisans WHERE user_id=?", (session['user_id'],)).fetchone()
     if not artisan:
@@ -2123,7 +2511,7 @@ def chat_poll(id_param):
 def request_quote(id):
     conn = get_db_connection()
     artisan = db_execute(conn, "SELECT * FROM artisans WHERE id=?", (id,)).fetchone()
-    if not artisan:
+    if not artisan or artisan['is_suspended']:
         conn.close()
         return redirect(url_for('artisans'))
     artisan = dict(artisan)

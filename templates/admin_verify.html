@@ -37,9 +37,11 @@
         {% if r.notes %}<div class="notes">{{ r.notes }}</div>{% endif %}
         <div class="action-row">
             <form method="POST" action="/admin/verification-requests/{{ r.id }}/approve">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-sm btn-approve"><i class="fa-solid fa-check"></i> Approve & Verify</button>
             </form>
             <form method="POST" action="/admin/verification-requests/{{ r.id }}/reject">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-sm btn-reject"><i class="fa-solid fa-xmark"></i> Reject</button>
             </form>
         </div>

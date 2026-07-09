@@ -135,6 +135,7 @@
 
 <div class="form-wrap">
 <form method="POST" enctype="multipart/form-data" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <!-- PERSONAL INFO -->
     <div class="section-block">
@@ -351,7 +352,7 @@
 </form>
 
 {% for photo in portfolio %}
-<form id="del-{{ photo.id }}" method="POST" action="/artisan/{{ artisan.id }}/delete-photo/{{ photo.id }}" style="display:none;"></form>
+<form id="del-{{ photo.id }}" method="POST" action="/artisan/{{ artisan.id }}/delete-photo/{{ photo.id }}" style="display:none;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
 {% endfor %}
 
 </div>

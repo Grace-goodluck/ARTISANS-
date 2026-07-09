@@ -34,6 +34,7 @@
 <nav>
     <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
     <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
     <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
 </nav>
 <div class="wrap">

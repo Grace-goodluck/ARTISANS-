@@ -56,6 +56,7 @@
     <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
     <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
     <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+    {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
     <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
 </nav>
 
@@ -110,6 +111,7 @@
                     <button class="reply-toggle" onclick="toggleReply('reply-form-{{ r.id }}')"><i class="fa-solid fa-reply"></i> Reply to this review</button>
                     {% endif %}
                     <form id="reply-form-{{ r.id }}" method="POST" action="/review/{{ r.id }}/reply" style="display:none;margin-top:8px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <textarea name="reply" rows="2" placeholder="Write a reply...">{{ r.reply or '' }}</textarea>
                         <button type="submit" class="reply-submit"><i class="fa-solid fa-paper-plane"></i> Send Reply</button>
                     </form>

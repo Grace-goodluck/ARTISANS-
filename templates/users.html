@@ -119,6 +119,7 @@
             <div class="card-actions">
                 <a href="/edit/{{ user.id }}" class="edit-btn">Edit</a>
                 <form method="POST" action="/delete/{{ user.id }}" style="display:inline;" onsubmit="return confirm('Delete this user?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="delete-btn">Delete</button>
                 </form>
             </div>

@@ -70,6 +70,7 @@
     {% if error %}<div class="error"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>{% endif %}
     <p>Enter your details to start chatting.</p>
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="action" value="identify">
         <div class="field"><label>Your Name *</label><input type="text" name="client_name" required placeholder="Your full name"></div>
         <div class="field"><label>Phone Number *</label><input type="tel" name="client_phone" required placeholder="e.g. 08012345678"></div>
@@ -105,6 +106,7 @@
 </div>
 
 <form method="POST" class="chat-input-row" id="chat-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="send">
     <input type="text" name="body" id="msg-input" class="chat-input" placeholder="Type a message..." required autocomplete="off">
     <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>

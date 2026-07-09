@@ -446,6 +446,7 @@
             <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
             <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
             <a href="/account"><i class="fa-solid fa-gear"></i> Account</a>
+            {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
             <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         {% else %}
             <a href="/login"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
@@ -548,12 +549,14 @@
         <i class="fa-solid fa-pen-to-square"></i> Edit Profile
     </a>
     <form method="POST" action="/artisan/{{ artisan.id }}/bookmark" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="cta-btn" style="background:{% if is_bookmarked %}rgba(196,155,58,0.3){% else %}rgba(255,255,255,0.07){% endif %};color:{% if is_bookmarked %}#c49b3a{% else %}#fff8dc{% endif %};border:1px solid rgba(196,155,58,0.3);cursor:pointer;">
             <i class="fa-{% if is_bookmarked %}solid{% else %}regular{% endif %} fa-heart"></i> {% if is_bookmarked %}Saved{% else %}Save{% endif %}
         </button>
     </form>
     {% if session.user_id == artisan.user_id %}
     <form method="POST" action="/artisan/{{ artisan.id }}/toggle-availability" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="cta-btn" style="background:{% if artisan.is_available %}rgba(34,180,34,0.15){% else %}rgba(200,50,50,0.15){% endif %};color:{% if artisan.is_available %}#66dd66{% else %}#ff7777{% endif %};border:1px solid rgba({% if artisan.is_available %}34,180,34{% else %}200,50,50{% endif %},0.35);cursor:pointer;">
             <i class="fa-solid fa-toggle-{% if artisan.is_available %}on{% else %}off{% endif %}"></i> {% if artisan.is_available %}Set Busy{% else %}Set Available{% endif %}
         </button>
@@ -607,6 +610,7 @@
     <div style="background:#022f05;border:1px solid rgba(196,155,58,0.3);border-radius:16px;padding:32px;max-width:420px;width:100%;">
         <h3 style="font-size:18px;color:#c49b3a;margin-bottom:16px;"><i class="fa-solid fa-flag"></i> Report This Profile</h3>
         <form method="POST" action="/artisan/{{ artisan.id }}/report">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:14px;">
                 <label style="font-size:12px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Your Name (optional)</label>
                 <input type="text" name="reporter_name" placeholder="Anonymous" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:14px;outline:none;">
@@ -799,6 +803,7 @@
         <div class="section-title"><i class="fa-solid fa-paper-plane"></i> Send an Inquiry</div>
         <p style="color:rgba(255,248,220,0.55);font-size:14px;margin-bottom:18px;">Leave your details and {{ artisan.name.split()[0] }} will get back to you.</p>
         <form method="POST" action="/artisan/{{ artisan.id }}/message" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <label style="font-size:12px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.7px;">Your Name</label>
                 <input type="text" name="sender_name" placeholder="Enter your name" required style="padding:11px 14px;border-radius:10px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:14px;outline:none;">
@@ -934,6 +939,7 @@
     <div class="section-card full-width">
         <div class="section-title"><i class="fa-solid fa-pen-to-square"></i> Leave a Review</div>
         <form method="POST" class="review-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label>Your Name</label>
             <input type="text" name="reviewer_name" placeholder="Your name (optional)" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:14px;font-family:inherit;outline:none;margin-bottom:4px;">
             <label>Rating</label>
@@ -972,8 +978,11 @@
                 {% if pkg.delivery_days %}<div style="font-size:12px;color:rgba(255,248,220,0.4);"><i class="fa-solid fa-clock"></i> {{ pkg.delivery_days }} day{{ 's' if pkg.delivery_days != 1 }} delivery</div>{% endif %}
                 {% if session.user_id == artisan.user_id %}
                 <form method="POST" action="/artisan/{{ artisan.id }}/packages/{{ pkg.id }}/delete" style="margin-top:10px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" style="background:rgba(200,50,50,0.15);color:#ff7777;border:none;border-radius:15px;padding:5px 12px;font-size:11px;cursor:pointer;" onclick="return confirm('Delete this package?')"><i class="fa-solid fa-trash"></i></button>
                 </form>
+                {% elif pkg.price %}
+                <a href="/artisan/{{ artisan.id }}/pay/{{ pkg.id }}" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:{{ tc }};color:#022f05;font-weight:800;border:none;border-radius:15px;padding:7px 14px;font-size:12px;text-decoration:none;"><i class="fa-solid fa-credit-card"></i> Pay &amp; Book</a>
                 {% endif %}
             </div>
             {% endfor %}
@@ -983,6 +992,7 @@
         <details style="margin-top:8px;">
             <summary style="color:#c49b3a;font-size:13px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-plus"></i> Add Package</summary>
             <form method="POST" action="/artisan/{{ artisan.id }}/packages/add" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div><label style="font-size:11px;color:#c49b3a;font-weight:700;">Tier</label>
                 <select name="tier" style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;">
                     <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
@@ -1012,6 +1022,7 @@
             <div style="font-size:14px;color:rgba(255,248,220,0.7);line-height:1.6;">A: {{ faq.answer }}</div>
             {% if session.user_id == artisan.user_id %}
             <form method="POST" action="/artisan/{{ artisan.id }}/faq/{{ faq.id }}/delete" style="margin-top:6px;display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" style="background:none;color:rgba(200,50,50,0.6);border:none;font-size:12px;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
             </form>
             {% endif %}
@@ -1021,6 +1032,7 @@
         <details style="margin-top:14px;">
             <summary style="color:#c49b3a;font-size:13px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-plus"></i> Add FAQ</summary>
             <form method="POST" action="/artisan/{{ artisan.id }}/faq/add" style="margin-top:12px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="text" name="question" placeholder="Question" required style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;margin-bottom:8px;">
                 <textarea name="answer" rows="2" placeholder="Answer" required style="width:100%;padding:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:13px;outline:none;resize:vertical;margin-bottom:8px;"></textarea>
                 <button type="submit" style="background:#c49b3a;color:#022f05;font-weight:800;padding:8px 22px;border:none;border-radius:20px;cursor:pointer;font-size:13px;">Add</button>
@@ -1070,6 +1082,7 @@
     <div style="background:#022f05;border:1px solid rgba(196,155,58,0.3);border-radius:16px;padding:28px;max-width:400px;width:100%;">
         <h3 style="font-size:16px;color:#ff9999;margin-bottom:16px;"><i class="fa-solid fa-flag"></i> Flag This Review</h3>
         <form id="flag-review-form" method="POST" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:14px;">
                 <label style="font-size:11px;font-weight:700;color:rgba(255,248,220,0.6);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Your Name (optional)</label>
                 <input type="text" name="reporter_name" placeholder="Anonymous" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(196,155,58,0.25);background:rgba(255,255,255,0.06);color:#fff8dc;font-size:13px;outline:none;">
@@ -1099,6 +1112,7 @@
         <h3 style="font-size:17px;color:#c49b3a;margin-bottom:14px;"><i class="fa-solid fa-id-card"></i> Request Verification Badge</h3>
         <p style="font-size:13px;color:rgba(255,248,220,0.6);margin-bottom:16px;">Our team will review your information and verify your profile within 48 hours.</p>
         <form method="POST" action="/artisan/{{ artisan.id }}/verify-request">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:12px;">
                 <label style="font-size:11px;font-weight:700;color:#c49b3a;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">ID Type</label>
                 <select name="id_type" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(196,155,58,0.3);border-radius:8px;color:#fff8dc;font-size:14px;outline:none;">

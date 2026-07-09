@@ -40,6 +40,7 @@
 <nav>
     <a href="/"><i class="fa-solid fa-house"></i> Artisaan's Crib</a>
     <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
     <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
 </nav>
 <div class="wrap">
@@ -52,6 +53,7 @@
             <div class="bk-header">
                 <div class="bk-name"><i class="fa-solid fa-user" style="color:#c49b3a;margin-right:6px;"></i>{{ b.client_name }}</div>
                 <span class="status-badge status-{{ b.status or 'pending' }}">{{ b.status or 'pending' }}</span>
+                {% if b.amount_kobo %}<span class="status-badge status-confirmed"><i class="fa-solid fa-circle-check"></i> Paid &#8358;{{ '{:,.0f}'.format(b.amount_kobo / 100) }}</span>{% endif %}
                 <span class="bk-date"><i class="fa-solid fa-calendar"></i> {{ b.service_date or 'No date' }}</span>
             </div>
             <div class="bk-detail"><i class="fa-solid fa-phone" style="color:#c49b3a;margin-right:6px;"></i>{{ b.client_phone }}</div>
@@ -63,18 +65,21 @@
                 <a href="https://wa.me/{{ b.client_phone|wa_number }}" target="_blank" class="btn-status" style="background:rgba(37,211,102,0.15);color:#25D366;border:1px solid rgba(37,211,102,0.3);text-decoration:none;"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
                 {% if b.status != 'confirmed' %}
                 <form method="POST" action="/booking/{{ b.id }}/status" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="status" value="confirmed">
                     <button type="submit" class="btn-status btn-confirm"><i class="fa-solid fa-check"></i> Confirm</button>
                 </form>
                 {% endif %}
                 {% if b.status != 'declined' %}
                 <form method="POST" action="/booking/{{ b.id }}/status" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="status" value="declined">
                     <button type="submit" class="btn-status btn-decline"><i class="fa-solid fa-xmark"></i> Decline</button>
                 </form>
                 {% endif %}
                 {% if b.status == 'confirmed' %}
                 <form method="POST" action="/booking/{{ b.id }}/status" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="status" value="completed">
                     <button type="submit" class="btn-status btn-complete"><i class="fa-solid fa-flag-checkered"></i> Mark Complete</button>
                 </form>

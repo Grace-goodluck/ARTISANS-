@@ -105,6 +105,7 @@
         <a href="/saved"><i class="fa-solid fa-heart"></i> Saved</a>
         <a href="/notifications"><i class="fa-solid fa-bell"></i> Notifications</a>
         <a href="/dashboard"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+        {% if is_platform_admin %}<a href="/admin"><i class="fa-solid fa-shield-halved"></i> Admin</a>{% endif %}
         <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </div>
 </nav>
@@ -136,6 +137,7 @@
             </div>
         </div>
         <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="update_avatar">
             <div class="field">
                 <label>Choose New Photo</label>
@@ -175,6 +177,7 @@
     <div class="card">
         <h2><i class="fa-solid fa-user"></i> Personal Information</h2>
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="update_profile">
             <div class="field">
                 <label>Full Name</label>
@@ -192,6 +195,7 @@
     <div class="card">
         <h2><i class="fa-solid fa-lock"></i> Change Password</h2>
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="change_password">
             <div class="field">
                 <label>Current Password</label>
@@ -220,6 +224,7 @@
             <a href="/dashboard" class="ql"><i class="fa-solid fa-gauge"></i> Dashboard</a>
             <a href="/artisans" class="ql"><i class="fa-solid fa-users"></i> Find Artisans</a>
             <a href="/add-artisan" class="ql"><i class="fa-solid fa-plus"></i> Register Artisan</a>
+            {% if is_platform_admin %}<a href="/admin" class="ql"><i class="fa-solid fa-shield-halved"></i> Admin Panel</a>{% endif %}
         </div>
     </div>
 
@@ -229,6 +234,7 @@
         <p class="danger-text">Permanently delete your account and all associated data including saved artisans and your artisan profile (if any). This action <strong>cannot be undone</strong>.</p>
         <button class="btn-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Delete My Account</button>
         <form method="POST" id="delete-form" style="display:none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="delete_account">
         </form>
     </div>
